@@ -6,9 +6,10 @@ public class MyProject : ModuleRules
 {
 	public MyProject(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
+		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;// よく使うヘッダーファイルを事前にコンパイルしておくことで、ビルド時間を短縮するための設定です。
+
+        //
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
