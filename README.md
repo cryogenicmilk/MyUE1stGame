@@ -1,5 +1,5 @@
 # MyUE1stGame
-個人製作のパルクールゲーム
+個人製作のアクションゲーム
 
 共通略称
 IA_ = Input Action
