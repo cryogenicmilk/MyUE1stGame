@@ -1,44 +1,44 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
-// ‚±‚Ìƒwƒbƒ_‚ğ1‰ñ‚¾‚¯“Ç‚İ‚Ş
-// ‘½dƒCƒ“ƒNƒ‹[ƒh–h~
+// ã“ã®ãƒ˜ãƒƒãƒ€ã‚’1å›ã ã‘èª­ã¿è¾¼ã‚€
+// å¤šé‡ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰é˜²æ­¢
 
 // ========================================
 // Include order rule
-// 1. CoreŒnƒwƒbƒ_
-// 2. eƒNƒ‰ƒXƒwƒbƒ_
-// 3. generated.hi•K‚¸ÅŒãj
-// UnrealHeaderTool ‚ª¶¬‚·‚éƒR[ƒh‚Ì‚½‚ß
-// generated.h ‚ÌŒã‚É include ‚ğ‘‚­‚Æƒrƒ‹ƒhƒGƒ‰[‚É‚È‚é
+// 1. Coreç³»ãƒ˜ãƒƒãƒ€
+// 2. è¦ªã‚¯ãƒ©ã‚¹ãƒ˜ãƒƒãƒ€
+// 3. generated.hï¼ˆå¿…ãšæœ€å¾Œï¼‰
+// UnrealHeaderTool ãŒç”Ÿæˆã™ã‚‹ã‚³ãƒ¼ãƒ‰ã®ãŸã‚
+// generated.h ã®å¾Œã« include ã‚’æ›¸ãã¨ãƒ“ãƒ«ãƒ‰ã‚¨ãƒ©ãƒ¼ã«ãªã‚‹
 // ========================================
 
 // UE Core
 #include "CoreMinimal.h"
-
 // UE Gameplay
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
 
 // Generated header (must be last)
-// UnrealHeaderTool ‚ª©“®¶¬‚·‚éƒR[ƒhB
-// UCLASS / UPROPERTY / UFUNCTION ‚È‚Ç‚Ì
-// ƒŠƒtƒŒƒNƒVƒ‡ƒ“ƒVƒXƒeƒ€‚ğ“®‚©‚·‚½‚ß‚ÌƒR[ƒh‚ª“ü‚éB
+// UnrealHeaderTool ãŒè‡ªå‹•ç”Ÿæˆã™ã‚‹ã‚³ãƒ¼ãƒ‰ã€‚
+// UCLASS / UPROPERTY / UFUNCTION ãªã©ã®
+// ãƒªãƒ•ãƒ¬ã‚¯ã‚·ãƒ§ãƒ³ã‚·ã‚¹ãƒ†ãƒ ã‚’å‹•ã‹ã™ãŸã‚ã®ã‚³ãƒ¼ãƒ‰ãŒå…¥ã‚‹ã€‚
 #include "MyCharacter.generated.h"
 
 // ========================================
 // Player Character Class
-// ƒvƒŒƒCƒ„[‘€ì‚ğŠÇ—‚·‚éƒLƒƒƒ‰ƒNƒ^[
+// ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼æ“ä½œã‚’ç®¡ç†ã™ã‚‹ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼
 // ========================================
 
-// UE‚ÌƒNƒ‰ƒX‚Å‚ ‚é‚±‚Æ‚ğéŒ¾‚·‚éƒ}ƒNƒ
-UCLASS()
+UCLASS()// UEã®ã‚¯ãƒ©ã‚¹ã§ã‚ã‚‹ã“ã¨ã‚’å®£è¨€ã™ã‚‹ãƒã‚¯ãƒ­
 class MYPROJECT_API AMyCharacter : public ACharacter
 {
-	// Unreal Engine ‚ÌƒŠƒtƒŒƒNƒVƒ‡ƒ“ƒVƒXƒeƒ€—pƒR[ƒh‚ğ¶¬‚·‚éƒ}ƒNƒ
+	// Unreal Engine ã®ãƒªãƒ•ãƒ¬ã‚¯ã‚·ãƒ§ãƒ³ã‚·ã‚¹ãƒ†ãƒ ç”¨ã‚³ãƒ¼ãƒ‰ã‚’ç”Ÿæˆã™ã‚‹ãƒã‚¯ãƒ­
 	GENERATED_BODY()
 
 public:
@@ -49,12 +49,22 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	USpringArmComponent* CameraBoom;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	UCameraComponent* FollowCamera;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	UInputAction* LookAction;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputMappingContext* DefaultMappingContext;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* MoveAction;
 
+	void Look(const FInputActionValue& Value);
 	void Move(const FInputActionValue& Value);
 
 public:
