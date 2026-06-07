@@ -33,6 +33,10 @@ AMyCharacter::AMyCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera")); // プレイヤーが見る画面そのもの
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // カメラアームの先端にアタッチ
 	FollowCamera->bUsePawnControlRotation = false; // カメラはコントローラーの回転をしない
+
+	// ジャンプ
+	GetCharacterMovement()->JumpZVelocity = 700.f; // ジャンプの高さ
+	JumpMaxCount = 2; // 二段ジャンプを可能にする
 }
 
 // unityの Start() に相当する関数
@@ -109,7 +113,7 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 	}
 }
 
-// Called to bind functionality to input
+// 入力のバインドを行う関数（UEのフレームワークが呼び出す関数）
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -125,6 +129,12 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (MoveAction)
 		{
 			EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
+		}
+
+		if (JumpAction)
+		{
+			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started,   this, &ACharacter::Jump);
+			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 		}
 	}
 }
