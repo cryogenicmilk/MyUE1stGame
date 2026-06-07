@@ -113,6 +113,18 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 	}
 }
 
+void AMyCharacter::StartDash()
+{
+	bIsDashing = true;
+	GetCharacterMovement()->MaxWalkSpeed = DashSpeed;
+}
+
+void AMyCharacter::StopDash()
+{
+	bIsDashing = false;
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
 // 入力のバインドを行う関数（UEのフレームワークが呼び出す関数）
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -135,6 +147,12 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started,   this, &ACharacter::Jump);
 			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		}
+
+		if (DashAction)
+		{
+			EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started,   this, &AMyCharacter::StartDash);
+			EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Completed, this, &AMyCharacter::StopDash);
 		}
 	}
 }

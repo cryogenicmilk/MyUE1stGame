@@ -65,13 +65,27 @@ protected:
 	UInputAction* MoveAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	UInputAction* DashAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* JumpAction;
+
+	bool bIsDashing = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float WalkSpeed = 500.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float DashSpeed = 1000.0f;
 
 	// 入力の設定を行うためのおまじない関数（自分で新しく定義）
 	void SetupEnhancedInputMapping();
 
 	void Look(const FInputActionValue& Value);
 	void Move(const FInputActionValue& Value);
+
+	void StartDash();
+	void StopDash();
 
 public:
 	// Called every frame
