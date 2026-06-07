@@ -40,7 +40,7 @@ void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	void SetupEnhancedInputMapping(); // 入力の設定を行うためのおまじない関数（自分で新しく定義）
+	SetupEnhancedInputMapping(); // 入力の設定を行うためのおまじない関数（自分で新しく定義）
 }
 
 // Called every frame
