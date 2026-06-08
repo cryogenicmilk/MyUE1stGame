@@ -21,7 +21,7 @@ AMyCharacter::AMyCharacter()
 
 	// 移動方向にキャラを向ける
 	GetCharacterMovement()->bOrientRotationToMovement = true; // これを有効にすると、キャラクターは移動方向に向くようになる
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 回転速度
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 700.0f, 0.0f); // 回転速度
 
 	// カメラアームの作成
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); // USpringArmComponentがあるお陰で、カメラが壁に衝突しても、カメラがキャラクターに近づくようになる
@@ -35,7 +35,7 @@ AMyCharacter::AMyCharacter()
 	FollowCamera->bUsePawnControlRotation = false; // カメラはコントローラーの回転をしない
 
 	// ジャンプ
-	GetCharacterMovement()->JumpZVelocity = 700.f; // ジャンプの高さ
+	GetCharacterMovement()->JumpZVelocity = 500.f; // ジャンプの高さ
 	JumpMaxCount = 2; // 二段ジャンプを可能にする
 }
 
