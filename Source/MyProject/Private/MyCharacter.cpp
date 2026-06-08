@@ -9,34 +9,15 @@
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
-// 
+// unityの Awake() に相当する関数（コンストラクタ）
 AMyCharacter::AMyCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// デフォルトだと、キャラクターはコントローラーの回転に合わせて回転する設定になっているため、これらを無効にする
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
-
-	// 移動方向にキャラを向ける
-	GetCharacterMovement()->bOrientRotationToMovement = true; // これを有効にすると、キャラクターは移動方向に向くようになる
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 700.0f, 0.0f); // 回転速度
-
-	// カメラアームの作成
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); // USpringArmComponentがあるお陰で、カメラが壁に衝突しても、カメラがキャラクターに近づくようになる
-	CameraBoom->SetupAttachment(RootComponent); // キャラクターのルートコンポーネントにアタッチ
-	CameraBoom->TargetArmLength = 300.0f;		// カメラとキャラクターの距離
-	CameraBoom->bUsePawnControlRotation = true; // コントローラーの回転をカメラアームに適用
-
-	// カメラ作成
-	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera")); // プレイヤーが見る画面そのもの
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // カメラアームの先端にアタッチ
-	FollowCamera->bUsePawnControlRotation = false; // カメラはコントローラーの回転をしない
-
-	// ジャンプ
-	GetCharacterMovement()->JumpZVelocity = 500.f; // ジャンプの高さ
-	JumpMaxCount = 2; // 二段ジャンプを可能にする
+	// 初期化
+	SetupCharacterRotation();
+	SetupCamera();
+	SetupJump();
 }
 
 // unityの Start() に相当する関数
@@ -47,37 +28,106 @@ void AMyCharacter::BeginPlay()
 	SetupEnhancedInputMapping(); // 入力の設定を行うためのおまじない関数（自分で新しく定義）
 }
 
-// Called every frame
+// unityの Update() に相当する関数
 void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
 
-	/// ////////////
-	/// c++(UE)では特に準備できていないデータにアクセスするとクラッシュしてしまうため、「本当にこのデータある？壊れてない？」と１つずつ確認していく必要があります。
-	/// ////////////
-// 入力の設定を行うためのおまじない関数（自分で新しく定義）
+// 入力のバインドを行う関数（UEのフレームワークが呼び出す関数）
+void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	UEnhancedInputComponent* EnhancedInputComp = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+
+	if (!EnhancedInputComp) return;
+
+	BindLookInput(EnhancedInputComp);
+	BindMoveInput(EnhancedInputComp);
+	BindJumpInput(EnhancedInputComp);
+	BindDashInput(EnhancedInputComp);
+}
+
+void AMyCharacter::BindLookInput(UEnhancedInputComponent* EnhancedInputComp)
+{
+	if (!LookAction) return;
+	EnhancedInputComp->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
+}
+
+void AMyCharacter::BindMoveInput(UEnhancedInputComponent* EnhancedInputComp)
+{
+	if (!MoveAction) return;
+	EnhancedInputComp->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
+}
+
+void AMyCharacter::BindJumpInput(UEnhancedInputComponent* EnhancedInputComp)
+{
+	if (!JumpAction) return;
+	EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Started,   this, &ACharacter::Jump       );
+	EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+}
+
+void AMyCharacter::BindDashInput(UEnhancedInputComponent* EnhancedInputComp)
+{
+	if (!DashAction) return;
+	EnhancedInputComp->BindAction(DashAction, ETriggerEvent::Started,   this, &AMyCharacter::StartDash);
+	EnhancedInputComp->BindAction(DashAction, ETriggerEvent::Completed, this, &AMyCharacter::StopDash );
+}
+
+/// 初期化関数
+// カメラの初期設定を行う関数（自分で新しく定義）
+void AMyCharacter::SetupCamera()
+{
+	// カメラアームの作成
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); // USpringArmComponentがあるお陰で、カメラが壁に衝突しても、カメラがキャラクターに近づくようになる
+	CameraBoom->SetupAttachment(RootComponent); // キャラクターのルートコンポーネントにアタッチ
+	CameraBoom->TargetArmLength = 300.0f;		// カメラとキャラクターの距離
+	CameraBoom->bUsePawnControlRotation = true; // コントローラーの回転をカメラアームに適用
+
+	// カメラ作成
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera")); // プレイヤーが見る画面そのもの
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // カメラアームの先端にアタッチ
+	FollowCamera->bUsePawnControlRotation = false; // カメラはコントローラーの回転をしない
+}
+
+// キャラ本体の回転設定
+void AMyCharacter::SetupCharacterRotation()
+{
+	// デフォルトだと、キャラクターはコントローラーの回転に合わせて回転する設定になっているため、これらを無効にする
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+
+	// 移動方向にキャラを向ける
+	GetCharacterMovement()->bOrientRotationToMovement = true; // これを有効にすると、キャラクターは移動方向に向くようになる
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 700.0f, 0.0f); // 回転速度
+
+}
+
+// Enhanced Input Mappingの初期設定を行う関数（自分で新しく定義）
 void AMyCharacter::SetupEnhancedInputMapping()
 {
 	// 1. 人間プレイヤーかチェック
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
 	if (!PlayerController) return;
-	
+
 	// 2. ローカルプレイヤーかチェック
 	ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
 	if (!LocalPlayer) return;
-	
+
 	// 3. 入力サブシステム（管理人）がいるかチェック
 	auto* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
 	if (!Subsystem) return;
-	
+
 	// 4. エディタ側でアセットが割り当てられているかチェック
 	if (!DefaultMappingContext) return;
-	
+
 	// --- すべてのセキュリティを突破！ 本題の処理 ---
 	Subsystem->AddMappingContext(DefaultMappingContext, 0);
 }
 
+/// 入力に対応する関数
 // カメラ回転入力の処理
 void AMyCharacter::Look(const FInputActionValue& Value)
 {
@@ -113,47 +163,21 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 	}
 }
 
+// ジャンプ設定
+void AMyCharacter::SetupJump()
+{
+	GetCharacterMovement()->JumpZVelocity = 600.f; // ジャンプの高さ
+	JumpMaxCount = 2; // 二段ジャンプを可能にする
+}
+
+// プレイヤーダッシュの処理
 void AMyCharacter::StartDash()
 {
 	bIsDashing = true;
 	GetCharacterMovement()->MaxWalkSpeed = DashSpeed;
 }
-
 void AMyCharacter::StopDash()
 {
 	bIsDashing = false;
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
-
-// 入力のバインドを行う関数（UEのフレームワークが呼び出す関数）
-void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	//Enhanced Input Component にキャストして、入力アクションをバインドする
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
-	{
-		if (LookAction)
-		{
-			EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
-		}
-
-		if (MoveAction)
-		{
-			EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
-		}
-
-		if (JumpAction)
-		{
-			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started,   this, &ACharacter::Jump);
-			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-		}
-
-		if (DashAction)
-		{
-			EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started,   this, &AMyCharacter::StartDash);
-			EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Completed, this, &AMyCharacter::StopDash);
-		}
-	}
-}
-

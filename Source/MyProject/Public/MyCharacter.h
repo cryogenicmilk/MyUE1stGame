@@ -81,9 +81,17 @@ protected:
 	// 入力の設定を行うためのおまじない関数（自分で新しく定義）
 	void SetupEnhancedInputMapping();
 
+	void BindLookInput(UEnhancedInputComponent* EnhancedInputComp);
+	void BindMoveInput(UEnhancedInputComponent* EnhancedInputComp);
+	void BindJumpInput(UEnhancedInputComponent* EnhancedInputComp);
+	void BindDashInput(UEnhancedInputComponent* EnhancedInputComp);
+
+	void SetupCamera();
+	void SetupCharacterRotation();
+	void SetupJump();
+
 	void Look(const FInputActionValue& Value);
 	void Move(const FInputActionValue& Value);
-
 	void StartDash();
 	void StopDash();
 
