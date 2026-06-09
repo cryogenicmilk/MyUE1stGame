@@ -3,12 +3,17 @@
 //Self include first
 #include "MyCharacter.h"
 
+// .hで前方宣言したクラスの実体をここでインクルード
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/Controller.h"
-#include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
+/// =================================================================
+/// 1. コンストラクタ & 初期化関数
+/// =================================================================
 // unityの Awake() に相当する関数（コンストラクタ）
 AMyCharacter::AMyCharacter()
 {
@@ -20,6 +25,45 @@ AMyCharacter::AMyCharacter()
 	SetupJump();
 }
 
+// キャラ本体の回転設定
+void AMyCharacter::SetupCharacterRotation()
+{
+	// デフォルトだと、キャラクターはコントローラーの回転に合わせて回転する設定になっているため、これらを無効にする
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+
+	// 移動方向にキャラを向ける
+	GetCharacterMovement()->bOrientRotationToMovement = true; // これを有効にすると、キャラクターは移動方向に向くようになる
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 700.0f, 0.0f); // 回転速度
+
+}
+
+// カメラの初期設定を行う関数（自分で新しく定義）
+void AMyCharacter::SetupCamera()
+{
+	// カメラアームの作成
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); // USpringArmComponentがあるお陰で、カメラが壁に衝突しても、カメラがキャラクターに近づくようになる
+	CameraBoom->SetupAttachment(RootComponent); // キャラクターのルートコンポーネントにアタッチ
+	CameraBoom->TargetArmLength = 300.0f;		// カメラとキャラクターの距離
+	CameraBoom->bUsePawnControlRotation = true; // コントローラーの回転をカメラアームに適用
+
+	// カメラ作成
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera")); // プレイヤーが見る画面そのもの
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // カメラアームの先端にアタッチ
+	FollowCamera->bUsePawnControlRotation = false; // カメラはコントローラーの回転をしない
+}
+
+// ジャンプ設定
+void AMyCharacter::SetupJump()
+{
+	GetCharacterMovement()->JumpZVelocity = 600.f; // ジャンプの高さ
+	JumpMaxCount = 2; // 二段ジャンプを可能にする
+}
+
+/// =================================================================
+/// 2. ライフサイクル関数
+/// =================================================================
 // unityの Start() に相当する関数
 void AMyCharacter::BeginPlay()
 {
@@ -49,6 +93,9 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	BindDashInput(EnhancedInputComp);
 }
 
+/// =================================================================
+/// 3. 入力バインド（SetupPlayerInputComponent ➔ ヘルパーの順）
+/// =================================================================
 void AMyCharacter::BindLookInput(UEnhancedInputComponent* EnhancedInputComp)
 {
 	if (!LookAction) return;
@@ -75,36 +122,6 @@ void AMyCharacter::BindDashInput(UEnhancedInputComponent* EnhancedInputComp)
 	EnhancedInputComp->BindAction(DashAction, ETriggerEvent::Completed, this, &AMyCharacter::StopDash );
 }
 
-/// 初期化関数
-// カメラの初期設定を行う関数（自分で新しく定義）
-void AMyCharacter::SetupCamera()
-{
-	// カメラアームの作成
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); // USpringArmComponentがあるお陰で、カメラが壁に衝突しても、カメラがキャラクターに近づくようになる
-	CameraBoom->SetupAttachment(RootComponent); // キャラクターのルートコンポーネントにアタッチ
-	CameraBoom->TargetArmLength = 300.0f;		// カメラとキャラクターの距離
-	CameraBoom->bUsePawnControlRotation = true; // コントローラーの回転をカメラアームに適用
-
-	// カメラ作成
-	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera")); // プレイヤーが見る画面そのもの
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // カメラアームの先端にアタッチ
-	FollowCamera->bUsePawnControlRotation = false; // カメラはコントローラーの回転をしない
-}
-
-// キャラ本体の回転設定
-void AMyCharacter::SetupCharacterRotation()
-{
-	// デフォルトだと、キャラクターはコントローラーの回転に合わせて回転する設定になっているため、これらを無効にする
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
-
-	// 移動方向にキャラを向ける
-	GetCharacterMovement()->bOrientRotationToMovement = true; // これを有効にすると、キャラクターは移動方向に向くようになる
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 700.0f, 0.0f); // 回転速度
-
-}
-
 // Enhanced Input Mappingの初期設定を行う関数（自分で新しく定義）
 void AMyCharacter::SetupEnhancedInputMapping()
 {
@@ -127,7 +144,9 @@ void AMyCharacter::SetupEnhancedInputMapping()
 	Subsystem->AddMappingContext(DefaultMappingContext, 0);
 }
 
-/// 入力に対応する関数
+/// =================================================================
+/// 4. 入力実行関数
+/// =================================================================
 // カメラ回転入力の処理
 void AMyCharacter::Look(const FInputActionValue& Value)
 {
@@ -161,13 +180,6 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 		AddMovementInput(ForwardDirection, MovementVector.Y); // Y = 前後移動 
 		AddMovementInput(RightDirection, MovementVector.X); // X = 左右移動
 	}
-}
-
-// ジャンプ設定
-void AMyCharacter::SetupJump()
-{
-	GetCharacterMovement()->JumpZVelocity = 600.f; // ジャンプの高さ
-	JumpMaxCount = 2; // 二段ジャンプを可能にする
 }
 
 // プレイヤーダッシュの処理
