@@ -50,6 +50,10 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void PlayDoubleJumpAnimation();
+
 private:
 	/** カメラコンポーネント */
 
@@ -100,6 +104,7 @@ private:
 	// 入力実行関数
 	void Look(const FInputActionValue& Value);
 	void Move(const FInputActionValue& Value);
+	void StartJump();
 	void StartDash();
 	void StopDash();
 };

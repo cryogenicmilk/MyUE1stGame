@@ -111,7 +111,7 @@ void AMyCharacter::BindMoveInput(UEnhancedInputComponent* EnhancedInputComp)
 void AMyCharacter::BindJumpInput(UEnhancedInputComponent* EnhancedInputComp)
 {
 	if (!JumpAction) return;
-	EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Started,   this, &ACharacter::Jump       );
+	EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Started,   this, &AMyCharacter::StartJump);
 	EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 }
 
@@ -180,6 +180,19 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 		AddMovementInput(ForwardDirection, MovementVector.Y); // Y = 前後移動 
 		AddMovementInput(RightDirection, MovementVector.X); // X = 左右移動
 	}
+}
+
+// ジャンプの処理
+void AMyCharacter::StartJump()
+{
+	if (JumpCurrentCount >= JumpMaxCount) return;
+
+	if (JumpCurrentCount > 0)
+	{
+		PlayDoubleJumpAnimation();
+	}
+
+	Jump();
 }
 
 // プレイヤーダッシュの処理
