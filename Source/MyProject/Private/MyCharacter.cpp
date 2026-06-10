@@ -91,6 +91,7 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	BindMoveInput(EnhancedInputComp);
 	BindJumpInput(EnhancedInputComp);
 	BindDashInput(EnhancedInputComp);
+	BindPointJumpInput(EnhancedInputComp);
 }
 
 /// =================================================================
@@ -120,6 +121,12 @@ void AMyCharacter::BindDashInput(UEnhancedInputComponent* EnhancedInputComp)
 	if (!DashAction) return;
 	EnhancedInputComp->BindAction(DashAction, ETriggerEvent::Started,   this, &AMyCharacter::StartDash);
 	EnhancedInputComp->BindAction(DashAction, ETriggerEvent::Completed, this, &AMyCharacter::StopDash );
+}
+
+void AMyCharacter::BindPointJumpInput(UEnhancedInputComponent* EnhancedInputComp)
+{
+	if (!PointJumpAction) return;
+	EnhancedInputComp->BindAction(PointJumpAction, ETriggerEvent::Started, this, &AMyCharacter::StartPointJump);
 }
 
 // Enhanced Input Mappingの初期設定を行う関数（自分で新しく定義）
@@ -206,3 +213,51 @@ void AMyCharacter::StopDash()
 	bIsDashing = false;
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
+
+// ポイントジャンプの処理
+void AMyCharacter::UpdatePointJump(float DeltaTime)
+{
+	if (!bIsPointJumping) return;
+
+	const FVector CurrentLocation = GetActorLocation();
+	const FVector NextLocation = FMath::VInterpConstantTo(CurrentLocation, PointJumpTargetLocation, DeltaTime, PointJumpPullSpeed);
+	SetActorLocation(NextLocation, true);
+
+	if (FVector::DistSquared(NextLocation, PointJumpLocation) <= FMath::Square(GetCurrentPointJumpArriveDistance()))
+	{
+		FinishPointJump(EPointJumpResult::Normal);
+	}
+}
+
+bool AMyCharacter::TryFindPointJumpTarget(UPointJumpTargetComponent*& OutTargetComponent) const
+{
+	UPointJumpTargetComponent* BestTarget = nullptr;
+	float BestDot = PointJumpMinViewDot;
+
+	const FVector CameraLocation = FollowCamera->GetComponentLocation();
+	const FVector CameraFoward   = FollowCamera->GetFowardVector();
+
+	for (TObjectIterator<UPointJumpTargetComponent> It; It; ++It)
+	{
+		UPointJumpTargetComponent* TargetComponent = *It;
+		if (!TargetCompnent) continue;
+		if (!TagetCompnent->GetWorld() != GetWorld()) continue;
+		if (!TargetComponent->IsPointJumpEnabled()) continue;
+
+		const FVector TargetLocation = TargetComponent->GetPointJumpLocation();
+		const FVector ToTarget = (TagetLocation - CameraLocation).GetSafeNormal();
+
+		const float ViewDot = FVector::DotProduct(CameraForward, ToTarget);
+
+		if (ViewDot < PointJumpMinViewDot) continue;
+
+		if (ViewDot > BestDot)
+		{
+			BestDot = ViewDot;
+			BestTarget = TargetComponent;
+		}
+	}
+	
+	return BestTarget;
+}
+
