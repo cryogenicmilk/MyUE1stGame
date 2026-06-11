@@ -10,6 +10,8 @@
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "PointJumpTargetComponent.h"
+#include "UObject/UObjectIterator.h"
 
 /// =================================================================
 /// 1. コンストラクタ & 初期化関数
@@ -76,6 +78,21 @@ void AMyCharacter::BeginPlay()
 void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	UpdatePointJump(DeltaTime);
+}
+
+void AMyCharacter::UpdatePointJump(float DeltaTime)
+{
+	if (!bIsPointJumping) return;
+
+	const FVector CurrentLocation = GetActorLocation();
+	const FVector NextLocation = FMath::VInterpConstantTo(CurrentLocation, PointJumpTargetLocation, DeltaTime, PointJumpPullSpeed);
+	SetActorLocation(NextLocation, true);
+
+	if (FVector::DistSquared(NextLocation, PointJumpTargetLocation) <= FMath::Square(GetCurrentPointJumpArriveDistance()))
+	{
+		FinishPointJump(EPointJumpResult::Normal);
+	}
 }
 
 // 入力のバインドを行う関数（UEのフレームワークが呼び出す関数）
@@ -192,6 +209,29 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 // ジャンプの処理
 void AMyCharacter::StartJump()
 {
+	if (bIsPointJumping)
+	{
+		const EPointJumpResult Result = JudgePointJumpInputTiming();
+
+		switch (Result)
+		{
+		case EPointJumpResult::Perfect:
+			UE_LOG(LogTemp, Warning, TEXT("PERFECT"));
+			break;
+
+		case EPointJumpResult::Good:
+			UE_LOG(LogTemp, Warning, TEXT("GOOD"));
+			break;
+
+		case EPointJumpResult::Normal:
+			UE_LOG(LogTemp, Warning, TEXT("NORMAL"));
+			break;
+		}
+
+		FinishPointJump(Result);
+		return;
+	}
+
 	if (JumpCurrentCount >= JumpMaxCount) return;
 
 	if (JumpCurrentCount > 0)
@@ -215,49 +255,229 @@ void AMyCharacter::StopDash()
 }
 
 // ポイントジャンプの処理
-void AMyCharacter::UpdatePointJump(float DeltaTime)
+void AMyCharacter::StartPointJump()
 {
-	if (!bIsPointJumping) return;
+	UE_LOG(LogTemp, Warning, TEXT("PointJump Pressed"));
 
-	const FVector CurrentLocation = GetActorLocation();
-	const FVector NextLocation = FMath::VInterpConstantTo(CurrentLocation, PointJumpTargetLocation, DeltaTime, PointJumpPullSpeed);
-	SetActorLocation(NextLocation, true);
+	if (bIsPointJumping) return;
 
-	if (FVector::DistSquared(NextLocation, PointJumpLocation) <= FMath::Square(GetCurrentPointJumpArriveDistance()))
+	UPointJumpTargetComponent* TargetComponent = nullptr;
+	if (!TryFindPointJumpTarget(TargetComponent))
 	{
-		FinishPointJump(EPointJumpResult::Normal);
+		UE_LOG(LogTemp, Error, TEXT("Target Not Found"));
+		return;
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Target Found"));
+
+
+	BeginPointJump(TargetComponent);
 }
 
+
+/// =================================================================
+/// ポイントジャンプ判定
+/// =================================================================
 bool AMyCharacter::TryFindPointJumpTarget(UPointJumpTargetComponent*& OutTargetComponent) const
 {
-	UPointJumpTargetComponent* BestTarget = nullptr;
-	float BestDot = PointJumpMinViewDot;
+	OutTargetComponent = nullptr;
+
+	if (!FollowCamera) return false;
+	if (!GetWorld()) return false;
 
 	const FVector CameraLocation = FollowCamera->GetComponentLocation();
-	const FVector CameraFoward   = FollowCamera->GetFowardVector();
+	const FVector CameraForward = FollowCamera->GetForwardVector();
+
+	UPointJumpTargetComponent* BestTarget = nullptr;
+	float BestViewDot = PointJumpMinViewDot;
 
 	for (TObjectIterator<UPointJumpTargetComponent> It; It; ++It)
 	{
 		UPointJumpTargetComponent* TargetComponent = *It;
-		if (!TargetCompnent) continue;
-		if (!TagetCompnent->GetWorld() != GetWorld()) continue;
-		if (!TargetComponent->IsPointJumpEnabled()) continue;
+		if (!TargetComponent) continue;
+		if (TargetComponent->GetWorld() != GetWorld()) continue;
+		if (!IsValidPointJumpTarget(TargetComponent, CameraLocation, CameraForward)) continue;
 
 		const FVector TargetLocation = TargetComponent->GetPointJumpLocation();
-		const FVector ToTarget = (TagetLocation - CameraLocation).GetSafeNormal();
-
+		const FVector ToTarget = (TargetLocation - CameraLocation).GetSafeNormal();
 		const float ViewDot = FVector::DotProduct(CameraForward, ToTarget);
 
-		if (ViewDot < PointJumpMinViewDot) continue;
-
-		if (ViewDot > BestDot)
+		if (ViewDot > BestViewDot)
 		{
-			BestDot = ViewDot;
+			BestViewDot = ViewDot;
 			BestTarget = TargetComponent;
 		}
 	}
-	
-	return BestTarget;
+
+	OutTargetComponent = BestTarget;
+	return OutTargetComponent != nullptr;
 }
 
+bool AMyCharacter::IsValidPointJumpTarget(const UPointJumpTargetComponent* TargetComponent, const FVector& CameraLocation, const FVector& CameraForward) const
+{
+	if (!TargetComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("TargetComponent is null"));
+		return false;
+	}
+
+	if (!TargetComponent->CanPointJump())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Target disabled"));
+		return false;
+	}
+
+	const AActor* OwnerActor = TargetComponent->GetOwner();
+	if (!OwnerActor)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Owner is null"));
+		return false;
+	}
+
+	if (OwnerActor == this)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Owner is player"));
+		return false;
+	}
+
+	const FVector TargetLocation = TargetComponent->GetPointJumpLocation();
+
+	const float Distance = FVector::Dist(GetActorLocation(), TargetLocation);
+	if (Distance > PointJumpSearchRadius)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Too far: %f"), Distance);
+		return false;
+	}
+
+	const FVector ToTarget = (TargetLocation - CameraLocation).GetSafeNormal();
+	const float ViewDot = FVector::DotProduct(CameraForward, ToTarget);
+	if (ViewDot < PointJumpMinViewDot)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Out of view: %f"), ViewDot);
+		return false;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Valid Target: %s"), *OwnerActor->GetName());
+	return true;
+}
+
+void AMyCharacter::BeginPointJump(UPointJumpTargetComponent* TargetComponent)
+{
+	if (!TargetComponent) return;
+
+	bIsPointJumping = true;
+	CurrentPointJumpTarget = TargetComponent;
+	PointJumpTargetLocation = TargetComponent->GetPointJumpLocation();
+
+	StopDash();
+	SetPointJumpMovementEnabled(false);
+}
+
+void AMyCharacter::FinishPointJump(EPointJumpResult Result)
+{
+	if (!bIsPointJumping) return;
+
+	bIsPointJumping = false;
+	CurrentPointJumpTarget = nullptr;
+	SetPointJumpMovementEnabled(true);
+
+	const FVector LanchVelocity = GetPointJumpLaunchDirection() * GetPointJumpForwardPower(Result)
+									+ FVector::UpVector         * GetPointJumpUpPower(Result);
+
+	LaunchCharacter(LanchVelocity, true, true);
+}
+// ポイント判定
+EPointJumpResult AMyCharacter::JudgePointJumpInputTiming() const
+{
+	const float Timing = GetPointJumpRemainingTime();
+
+	if (Timing <= PointJumpPerfectWindow)
+	{
+		return EPointJumpResult::Perfect;
+	}
+	if (Timing <= PointJumpGoodWindow)
+	{
+		return EPointJumpResult::Good;
+	}
+	return EPointJumpResult::Normal;
+}
+
+// ポイント判定結果
+float AMyCharacter::GetPointJumpForwardPower(EPointJumpResult Result) const
+{
+	switch (Result)
+	{
+	case EPointJumpResult::Perfect:
+		return PointJumpPerfectForwardPower;
+	case EPointJumpResult::Good:
+		return PointJumpGoodForwardPower;
+	case EPointJumpResult::Normal:
+		return PointJumpNormalForwardPower;
+	default:
+		return PointJumpNormalForwardPower;
+	}
+}
+float AMyCharacter::GetPointJumpUpPower(EPointJumpResult Result) const
+{
+	switch (Result)
+	{
+	case EPointJumpResult::Perfect:
+		return PointJumpPerfectUpPower;
+	case EPointJumpResult::Good:
+		return PointJumpGoodUpPower;
+	case EPointJumpResult::Normal:
+		return PointJumpNormalUpPower;
+	default:
+		return PointJumpNormalUpPower;
+	}
+}
+
+// ポイント結果後
+FVector AMyCharacter::GetPointJumpLaunchDirection() const
+{
+	if (!Controller) return GetActorForwardVector();
+
+	const FVector LastMovementInput = GetLastMovementInputVector();
+	if (!LastMovementInput.IsNearlyZero())
+	{
+		return LastMovementInput.GetSafeNormal2D();
+	}
+
+	const FRotator ControlRotation = Controller->GetControlRotation();
+	const FRotator YawRotation(0.0f, ControlRotation.Yaw, 0.0f);
+	return FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X).GetSafeNormal2D();
+}
+
+float AMyCharacter::GetPointJumpRemainingTime() const
+{
+	if (PointJumpPullSpeed <= 0.0f) return 0.0f;
+
+	const float RemainingDistance = FVector::Dist(GetActorLocation(), PointJumpTargetLocation);
+	return RemainingDistance / PointJumpPullSpeed;
+}
+
+float AMyCharacter::GetCurrentPointJumpArriveDistance() const
+{
+	if (CurrentPointJumpTarget && CurrentPointJumpTarget->ArriveDistanceOverride > 0.0f)
+	{
+		return CurrentPointJumpTarget->ArriveDistanceOverride;
+	}
+
+	return PointJumpArriveDistance;
+}
+
+void AMyCharacter::SetPointJumpMovementEnabled(bool bEnabled)
+{
+	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	if (!MovementComp) return;
+
+	if (bEnabled)
+	{
+		MovementComp->SetMovementMode(MOVE_Falling);
+		MovementComp->Velocity = FVector::ZeroVector;
+		return;
+	}
+
+	MovementComp->StopMovementImmediately();
+	MovementComp->SetMovementMode(MOVE_Flying);
+}

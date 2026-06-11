@@ -28,6 +28,14 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class UEnhancedInputComponent;
+class UPointJumpTargetComponent;
+
+enum class EPointJumpResult : uint8
+{
+	Normal,
+	Good,
+	Perfect
+};
 
 // ========================================
 // Player Character Class
@@ -79,6 +87,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
 	UInputAction* JumpAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
+	UInputAction* PointJumpAction;
+
 	/** 移動パラメータ */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = "true"))
 	float WalkSpeed = 500.0f;
@@ -87,6 +98,53 @@ private:
 	float DashSpeed = 1000.0f;
 
 	bool bIsDashing = false;
+
+	/** ポイントジャンプ調整値 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Search", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float PointJumpSearchRadius = 2500.0f;
+
+	// カメラ前方との一致度。1に近いほど画面中央付近しか拾わない。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Search", meta = (AllowPrivateAccess = "true", ClampMin = "-1.0", ClampMax = "1.0"))
+	float PointJumpMinViewDot = 0.55f;
+
+	// ポイントに近づいたとみなす距離。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Move", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float PointJumpArriveDistance = 90.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Move", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float PointJumpPullSpeed = 2800.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Timing", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float PointJumpPerfectWindow = 0.12f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Timing", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float PointJumpGoodWindow = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Launch", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float PointJumpNormalForwardPower = 1100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Launch", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float PointJumpGoodForwardPower = 1500.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Launch", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float PointJumpPerfectForwardPower = 2000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Launch", meta = (AllowPrivateAccess = "true"))
+	float PointJumpNormalUpPower = 450.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Launch", meta = (AllowPrivateAccess = "true"))
+	float PointJumpGoodUpPower = 650.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Launch", meta = (AllowPrivateAccess = "true"))
+	float PointJumpPerfectUpPower = 850.0f;
+
+	/** ポイントジャンプ状態 */
+	bool bIsPointJumping = false;
+	FVector PointJumpTargetLocation = FVector::ZeroVector;
+
+	UPROPERTY()
+	UPointJumpTargetComponent* CurrentPointJumpTarget = nullptr;
+
 
 private:
 
@@ -100,6 +158,7 @@ private:
 	void BindMoveInput(UEnhancedInputComponent* EnhancedInputComp);
 	void BindJumpInput(UEnhancedInputComponent* EnhancedInputComp);
 	void BindDashInput(UEnhancedInputComponent* EnhancedInputComp);
+	void BindPointJumpInput(UEnhancedInputComponent* EnhancedInputComp);
 
 	// 入力実行関数
 	void Look(const FInputActionValue& Value);
@@ -107,4 +166,19 @@ private:
 	void StartJump();
 	void StartDash();
 	void StopDash();
+	void StartPointJump();
+
+	// ポイントジャンプ
+	void UpdatePointJump(float DeltaTime);
+	bool TryFindPointJumpTarget(UPointJumpTargetComponent*& OutTargetComponent) const;
+	bool IsValidPointJumpTarget(const UPointJumpTargetComponent* TargetComponent, const FVector& CameraLocation, const FVector& CameraForward) const;
+	void BeginPointJump(UPointJumpTargetComponent* TargetComponent);
+	void FinishPointJump(EPointJumpResult Result);
+	EPointJumpResult JudgePointJumpInputTiming() const;
+	FVector GetPointJumpLaunchDirection() const;
+	float GetPointJumpForwardPower(EPointJumpResult Result) const;
+	float GetPointJumpUpPower(EPointJumpResult Result) const;
+	float GetPointJumpRemainingTime() const;
+	float GetCurrentPointJumpArriveDistance() const;
+	void SetPointJumpMovementEnabled(bool bEnabled);
 };
