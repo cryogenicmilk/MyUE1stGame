@@ -24,6 +24,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Target", meta = (ClampMin = "0.0"))
 	float ArriveDistanceOverride = 0.0f;
 
-	FVector GetPointJumpLocation() const;
-	bool CanPointJump() const;
+	FVector CustomGetPointJumpLocation() const;
+	bool CustomCanPointJump() const;
 };

@@ -149,38 +149,38 @@ private:
 private:
 
 	// 内部処理用の初期化・バインドヘルパー（外部に公開しないためprivateへ）
-	void SetupCharacterRotation();
-	void SetupCamera();
-	void SetupJump();
-	void SetupEnhancedInputMapping();
+	void CustomSetupCharacterRotation();
+	void CustomSetupCamera();
+	void CustomSetupJump();
+	void CustomSetupEnhancedInputMapping();
 
-	void BindLookInput(UEnhancedInputComponent* EnhancedInputComp);
-	void BindMoveInput(UEnhancedInputComponent* EnhancedInputComp);
-	void BindJumpInput(UEnhancedInputComponent* EnhancedInputComp);
-	void BindDashInput(UEnhancedInputComponent* EnhancedInputComp);
-	void BindPointJumpInput(UEnhancedInputComponent* EnhancedInputComp);
+	void CustomBindLookInput(UEnhancedInputComponent* EnhancedInputComp);
+	void CustomBindMoveInput(UEnhancedInputComponent* EnhancedInputComp);
+	void CustomBindJumpInput(UEnhancedInputComponent* EnhancedInputComp);
+	void CustomBindDashInput(UEnhancedInputComponent* EnhancedInputComp);
+	void CustomBindPointJumpInput(UEnhancedInputComponent* EnhancedInputComp);
 
 	// 入力実行関数
-	void Look(const FInputActionValue& Value);
-	void Move(const FInputActionValue& Value);
-	void OnJumpActionStarted();
-	void ExecutePointJumpTimingInput();
-	void ExecuteNormalJump();
-	void StartDash();
-	void StopDash();
-	void StartPointJump();
+	void CustomLook(const FInputActionValue& Value);
+	void CustomMove(const FInputActionValue& Value);
+	void CustomOnJumpActionStarted();
+	void CustomExecutePointJumpTimingInput();
+	void CustomExecuteNormalJump();
+	void CustomStartDash();
+	void CustomStopDash();
+	void CustomStartPointJump();
 
 	// ポイントジャンプ
-	void UpdatePointJump(float DeltaTime);
-	bool TryFindPointJumpTarget(UPointJumpTargetComponent*& OutTargetComponent) const;
-	bool IsValidPointJumpTarget(const UPointJumpTargetComponent* TargetComponent, const FVector& CameraLocation, const FVector& CameraForward) const;
-	void BeginPointJump(UPointJumpTargetComponent* TargetComponent);
-	void FinishPointJump(EPointJumpResult Result);
-	EPointJumpResult JudgePointJumpInputTiming() const;
-	FVector GetPointJumpLaunchDirection() const;
-	float GetPointJumpForwardPower(EPointJumpResult Result) const;
-	float GetPointJumpUpPower(EPointJumpResult Result) const;
-	float GetPointJumpRemainingTime() const;
-	float GetCurrentPointJumpArriveDistance() const;
-	void SetPointJumpMovementEnabled(bool bEnabled);
+	void CustomUpdatePointJump(float DeltaTime);
+	bool CustomTryFindPointJumpTarget(UPointJumpTargetComponent*& OutTargetComponent) const;
+	bool CustomIsValidPointJumpTarget(const UPointJumpTargetComponent* TargetComponent, const FVector& CameraLocation, const FVector& CameraForward) const;
+	void CustomBeginPointJump(UPointJumpTargetComponent* TargetComponent);
+	void CustomFinishPointJump(EPointJumpResult Result);
+	EPointJumpResult CustomJudgePointJumpInputTiming() const;
+	FVector CustomGetPointJumpLaunchDirection() const;
+	float CustomGetPointJumpForwardPower(EPointJumpResult Result) const;
+	float CustomGetPointJumpUpPower(EPointJumpResult Result) const;
+	float CustomGetPointJumpRemainingTime() const;
+	float CustomGetCurrentPointJumpArriveDistance() const;
+	void CustomSetPointJumpMovementEnabled(bool bEnabled);
 };

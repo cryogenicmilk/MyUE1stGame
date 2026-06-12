@@ -15,12 +15,12 @@ UPointJumpTargetComponent::UPointJumpTargetComponent()
 	SetHiddenInGame(true);
 }
 
-FVector UPointJumpTargetComponent::GetPointJumpLocation() const
+FVector UPointJumpTargetComponent::CustomGetPointJumpLocation() const
 {
 	return GetComponentLocation();
 }
 
-bool UPointJumpTargetComponent::CanPointJump() const
+bool UPointJumpTargetComponent::CustomCanPointJump() const
 {
 	return bCanPointJump;
 }
