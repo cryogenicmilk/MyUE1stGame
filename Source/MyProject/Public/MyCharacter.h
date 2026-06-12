@@ -163,7 +163,9 @@ private:
 	// 入力実行関数
 	void Look(const FInputActionValue& Value);
 	void Move(const FInputActionValue& Value);
-	void StartJump();
+	void OnJumpActionStarted();
+	void ExecutePointJumpTimingInput();
+	void ExecuteNormalJump();
 	void StartDash();
 	void StopDash();
 	void StartPointJump();

@@ -129,8 +129,7 @@ void AMyCharacter::BindMoveInput(UEnhancedInputComponent* EnhancedInputComp)
 void AMyCharacter::BindJumpInput(UEnhancedInputComponent* EnhancedInputComp)
 {
 	if (!JumpAction) return;
-	EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Started,   this, &AMyCharacter::StartJump);
-	EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+	EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Started, this, &AMyCharacter::OnJumpActionStarted);
 }
 
 void AMyCharacter::BindDashInput(UEnhancedInputComponent* EnhancedInputComp)
@@ -207,31 +206,34 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 }
 
 // ジャンプの処理
-void AMyCharacter::StartJump()
+void AMyCharacter::OnJumpActionStarted()
 {
 	if (bIsPointJumping)
 	{
-		const EPointJumpResult Result = JudgePointJumpInputTiming();
+		ExecutePointJumpTimingInput();
+	}
+	else
+	{
+		ExecuteNormalJump();
+	}
+}
 
-		switch (Result)
-		{
-		case EPointJumpResult::Perfect:
-			UE_LOG(LogTemp, Warning, TEXT("PERFECT"));
-			break;
+void AMyCharacter::ExecutePointJumpTimingInput()
+{
+	const EPointJumpResult Result = JudgePointJumpInputTiming();
 
-		case EPointJumpResult::Good:
-			UE_LOG(LogTemp, Warning, TEXT("GOOD"));
-			break;
-
-		case EPointJumpResult::Normal:
-			UE_LOG(LogTemp, Warning, TEXT("NORMAL"));
-			break;
-		}
-
-		FinishPointJump(Result);
-		return;
+	switch (Result) // デバッログ
+	{
+	case EPointJumpResult::Perfect:UE_LOG(LogTemp, Warning, TEXT("PERFECT")); break;
+	case EPointJumpResult::Good:   UE_LOG(LogTemp, Warning, TEXT("GOOD")   ); break;
+	case EPointJumpResult::Normal: UE_LOG(LogTemp, Warning, TEXT("NORMAL") ); break;
 	}
 
+	FinishPointJump(Result);
+	return;
+}
+void AMyCharacter::ExecuteNormalJump()
+{
 	if (JumpCurrentCount >= JumpMaxCount) return;
 
 	if (JumpCurrentCount > 0)
