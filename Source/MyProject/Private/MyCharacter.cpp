@@ -86,7 +86,13 @@ void AMyCharacter::CustomUpdatePointJump(float DeltaTime)
 	if (!bIsPointJumping) return;
 
 	const FVector CurrentLocation = GetActorLocation();
-	const FVector NextLocation = FMath::VInterpConstantTo(CurrentLocation, PointJumpTargetLocation, DeltaTime, PointJumpPullSpeed);
+	const FVector NextLocation =
+		FMath::VInterpConstantTo(
+			CurrentLocation,
+			PointJumpTargetLocation,
+			DeltaTime,
+			PointJumpPullSpeed
+		);
 	SetActorLocation(NextLocation, true);
 
 	if (FVector::DistSquared(NextLocation, PointJumpTargetLocation) <= FMath::Square(CustomGetCurrentPointJumpArriveDistance()))
@@ -225,8 +231,8 @@ void AMyCharacter::CustomExecutePointJumpTimingInput()
 	switch (Result) // デバッログ
 	{
 	case EPointJumpResult::Perfect:UE_LOG(LogTemp, Warning, TEXT("PERFECT")); break;
-	case EPointJumpResult::Good:   UE_LOG(LogTemp, Warning, TEXT("GOOD")   ); break;
-	case EPointJumpResult::Normal: UE_LOG(LogTemp, Warning, TEXT("NORMAL") ); break;
+	case EPointJumpResult::Good:   UE_LOG(LogTemp, Warning, TEXT("GOOD"   )); break;
+	case EPointJumpResult::Normal: UE_LOG(LogTemp, Warning, TEXT("NORMAL" )); break;
 	}
 
 	CustomFinishPointJump(Result);
@@ -269,7 +275,6 @@ void AMyCharacter::CustomStartPointJump()
 		UE_LOG(LogTemp, Error, TEXT("Target Not Found"));
 		return;
 	}
-
 	UE_LOG(LogTemp, Warning, TEXT("Target Found"));
 
 	CustomBeginPointJump(TargetComponent);
