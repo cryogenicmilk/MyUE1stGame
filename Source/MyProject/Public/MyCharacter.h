@@ -141,6 +141,8 @@ private:
 	/** ポイントジャンプ状態 */
 	bool bIsPointJumping = false;
 	FVector PointJumpTargetLocation = FVector::ZeroVector;
+	/** ポイントジャンプ状態中普通のジャンプを受け付けない */
+	bool bIsPointJumpingEnableJump = false;
 
 	UPROPERTY()
 	UPointJumpTargetComponent* CurrentPointJumpTarget = nullptr;

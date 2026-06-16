@@ -10,6 +10,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "PointJumpTargetComponent.h"
 #include "UObject/UObjectIterator.h"
 
@@ -84,6 +85,11 @@ void AMyCharacter::Tick(float DeltaTime)
 void AMyCharacter::CustomUpdatePointJump(float DeltaTime)
 {
 	if (!bIsPointJumping) return;
+
+	if (CustomGetPointJumpRemainingTime() <= PointJumpGoodWindow)
+	{
+		bIsPointJumpingEnableJump = true;
+	}
 
 	const FVector CurrentLocation = GetActorLocation();
 	const FVector NextLocation =
@@ -216,6 +222,7 @@ void AMyCharacter::CustomOnJumpActionStarted()
 {
 	if (bIsPointJumping)
 	{
+		if (!bIsPointJumpingEnableJump) return;
 		CustomExecutePointJumpTimingInput();
 	}
 	else
@@ -372,8 +379,14 @@ void AMyCharacter::CustomBeginPointJump(UPointJumpTargetComponent* TargetCompone
 	if (!TargetComponent) return;
 
 	bIsPointJumping = true;
+	bIsPointJumpingEnableJump = false;
+
 	CurrentPointJumpTarget = TargetComponent;
-	PointJumpTargetLocation = TargetComponent->CustomGetPointJumpLocation();
+
+	const FVector TargetLocation = TargetComponent->CustomGetPointJumpLocation();
+	const float CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+	PointJumpTargetLocation = TargetLocation + FVector::UpVector * CapsuleHalfHeight;
 
 	CustomStopDash();
 	CustomSetPointJumpMovementEnabled(false);
