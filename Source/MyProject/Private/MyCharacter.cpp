@@ -84,34 +84,61 @@ void AMyCharacter::Tick(float DeltaTime)
 
 void AMyCharacter::CustomUpdatePointJump(float DeltaTime)
 {
-	if (!bIsPointJumping) return;
+	switch (PointJumpState)
+	{
+	case EPointJumpState::None:return;
+	case EPointJumpState::Start:  CustomUpdatePointJumpStart(DeltaTime);  break;
+	case EPointJumpState::Pulling:CustomUpdatePointJumpPulling(DeltaTime);break;
+	case EPointJumpState::Landing:CustomUpdatePointJumpLanding(DeltaTime);break;
+	case EPointJumpState::Launch:
+		CustomFinishPointJump(
+			bIsBufferedPointJump ? BufferedPointJumpResult : EPointJumpResult::Normal
+		); 
+		break;
+	}
+}
 
+// アニメーション
+void AMyCharacter::CustomUpdatePointJumpStart(float DeltaTime)
+{
+	PointJumpStateTimer -= DeltaTime;
+
+	if (PointJumpStateTimer <= 0.0f)
+	{
+		PointJumpState = EPointJumpState::Pulling;
+	}
+}
+void AMyCharacter::CustomUpdatePointJumpPulling(float DeltaTime)
+{
 	if (CustomGetPointJumpRemainingTime() <= PointJumpGoodWindow)
 	{
 		bIsPointJumpingEnableJump = true;
 	}
 
 	const FVector CurrentLocation = GetActorLocation();
-	const FVector NextLocation =
-		FMath::VInterpConstantTo(
-			CurrentLocation,
-			PointJumpTargetLocation,
-			DeltaTime,
-			PointJumpPullSpeed
-		);
+	const FVector NextLocation = FMath::VInterpConstantTo(
+		CurrentLocation,
+		PointJumpTargetLocation,
+		DeltaTime,
+		PointJumpPullSpeed
+	);
+
 	SetActorLocation(NextLocation, true);
 
-	// ポイントに到着した
-	if (FVector::DistSquared(NextLocation, PointJumpTargetLocation) <= FMath::Square(CustomGetCurrentPointJumpArriveDistance()))
+	if (FVector::DistSquared(NextLocation, PointJumpTargetLocation)
+		<= FMath::Square(CustomGetCurrentPointJumpArriveDistance()))
 	{
-		if (bIsBufferedPointJump)
-		{
-			CustomFinishPointJump(BufferedPointJumpResult);
-		}
-		else
-		{
-			CustomFinishPointJump(EPointJumpResult::Normal);
-		}
+		PointJumpState = EPointJumpState::Landing;
+		PointJumpStateTimer = PointJumpLandingTime;
+	}
+}
+void AMyCharacter::CustomUpdatePointJumpLanding(float DeltaTime)
+{
+	PointJumpStateTimer -= DeltaTime;
+
+	if (PointJumpStateTimer <= 0.0f)
+	{
+		PointJumpState = EPointJumpState::Launch;
 	}
 }
 
@@ -228,7 +255,7 @@ void AMyCharacter::CustomMove(const FInputActionValue& Value)
 // ジャンプの処理
 void AMyCharacter::CustomOnJumpActionStarted()
 {
-	if (bIsPointJumping)
+	if (PointJumpState != EPointJumpState::None)
 	{
 		if (!bIsPointJumpingEnableJump) return;
 		CustomExecutePointJumpTimingInput();
@@ -283,7 +310,6 @@ void AMyCharacter::CustomStartPointJump()
 {
 	UE_LOG(LogTemp, Warning, TEXT("PointJump Pressed"));
 
-	if (bIsPointJumping) return;
 
 	UPointJumpTargetComponent* TargetComponent = nullptr;
 	if (!CustomTryFindPointJumpTarget(TargetComponent))
@@ -387,8 +413,12 @@ void AMyCharacter::CustomBeginPointJump(UPointJumpTargetComponent* TargetCompone
 {
 	if (!TargetComponent) return;
 
-	bIsPointJumping = true;
+	PointJumpState = EPointJumpState::Start;
+	PointJumpStateTimer = PointJumpStartTime;
+
 	bIsPointJumpingEnableJump = false;
+	bIsBufferedPointJump = false;
+	BufferedPointJumpResult = EPointJumpResult::Normal;
 
 	CurrentPointJumpTarget = TargetComponent;
 
@@ -403,9 +433,9 @@ void AMyCharacter::CustomBeginPointJump(UPointJumpTargetComponent* TargetCompone
 
 void AMyCharacter::CustomFinishPointJump(EPointJumpResult Result)
 {
-	if (!bIsPointJumping) return;
+	if (PointJumpState == EPointJumpState::None) return;
+	PointJumpState = EPointJumpState::None;
 
-	bIsPointJumping = false;
 	CurrentPointJumpTarget = nullptr;
 	CustomSetPointJumpMovementEnabled(true);
 
@@ -501,3 +531,4 @@ void AMyCharacter::CustomSetPointJumpMovementEnabled(bool bEnabled)
 	MovementComp->StopMovementImmediately();
 	MovementComp->SetMovementMode(MOVE_Flying);
 }
+

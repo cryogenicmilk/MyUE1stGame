@@ -37,6 +37,15 @@ enum class EPointJumpResult : uint8
 	Perfect
 };
 
+enum class EPointJumpState : uint8
+{
+	None,
+	Start,
+	Pulling,
+	Landing,
+	Launch
+};
+
 // ========================================
 // Player Character Class
 // プレイヤー操作を管理するキャラクター
@@ -139,13 +148,21 @@ private:
 	float PointJumpPerfectUpPower = 850.0f;
 
 	/** ポイントジャンプ状態 */
-	bool bIsPointJumping = false;
 	FVector PointJumpTargetLocation = FVector::ZeroVector;
 	/** ポイントジャンプ状態中普通のジャンプを受け付けない */
 	bool bIsPointJumpingEnableJump = false;
 	/** ポイントジャンプ着地までの先行入力 */
 	bool bIsBufferedPointJump = false;
 	EPointJumpResult BufferedPointJumpResult = EPointJumpResult::Normal;
+
+	// ポイントジャンプアニメーションstate
+	EPointJumpState PointJumpState = EPointJumpState::None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Animation", meta = (AllowPrivateAccess = "true"))
+	float PointJumpStartTime = 0.15f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Animation", meta = (AllowPrivateAccess = "true"))
+	float PointJumpLandingTime = 0.15f;
+
+	float PointJumpStateTimer = 0.0f;
 
 	UPROPERTY()
 	UPointJumpTargetComponent* CurrentPointJumpTarget = nullptr;
@@ -177,6 +194,10 @@ private:
 
 	// ポイントジャンプ
 	void CustomUpdatePointJump(float DeltaTime);
+	void CustomUpdatePointJumpStart(float DeltaTime);
+	void CustomUpdatePointJumpPulling(float DeltaTime);
+	void CustomUpdatePointJumpLanding(float DeltaTime);
+
 	bool CustomTryFindPointJumpTarget(UPointJumpTargetComponent*& OutTargetComponent) const;
 	bool CustomIsValidPointJumpTarget(const UPointJumpTargetComponent* TargetComponent, const FVector& CameraLocation, const FVector& CameraForward) const;
 	void CustomBeginPointJump(UPointJumpTargetComponent* TargetComponent);
