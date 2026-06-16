@@ -101,9 +101,17 @@ void AMyCharacter::CustomUpdatePointJump(float DeltaTime)
 		);
 	SetActorLocation(NextLocation, true);
 
+	// ポイントに到着した
 	if (FVector::DistSquared(NextLocation, PointJumpTargetLocation) <= FMath::Square(CustomGetCurrentPointJumpArriveDistance()))
 	{
-		CustomFinishPointJump(EPointJumpResult::Normal);
+		if (bIsBufferedPointJump)
+		{
+			CustomFinishPointJump(BufferedPointJumpResult);
+		}
+		else
+		{
+			CustomFinishPointJump(EPointJumpResult::Normal);
+		}
 	}
 }
 
@@ -242,7 +250,8 @@ void AMyCharacter::CustomExecutePointJumpTimingInput()
 	case EPointJumpResult::Normal: UE_LOG(LogTemp, Warning, TEXT("NORMAL" )); break;
 	}
 
-	CustomFinishPointJump(Result);
+	bIsBufferedPointJump = true;
+	BufferedPointJumpResult = Result;
 	return;
 }
 void AMyCharacter::CustomExecuteNormalJump()

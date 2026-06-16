@@ -143,6 +143,9 @@ private:
 	FVector PointJumpTargetLocation = FVector::ZeroVector;
 	/** ポイントジャンプ状態中普通のジャンプを受け付けない */
 	bool bIsPointJumpingEnableJump = false;
+	/** ポイントジャンプ着地までの先行入力 */
+	bool bIsBufferedPointJump = false;
+	EPointJumpResult BufferedPointJumpResult = EPointJumpResult::Normal;
 
 	UPROPERTY()
 	UPointJumpTargetComponent* CurrentPointJumpTarget = nullptr;
