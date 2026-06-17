@@ -136,7 +136,7 @@ void AMyCharacter::CustomUpdatePointJumpLanding(float DeltaTime)
 {
 	PointJumpStateTimer -= DeltaTime;
 
-	if (PointJumpStateTimer <= 0.0f)
+	if (bIsBufferedPointJump)
 	{
 		PointJumpState = EPointJumpState::Launch;
 	}

@@ -37,6 +37,7 @@ enum class EPointJumpResult : uint8
 	Perfect
 };
 
+UENUM(BlueprintType)
 enum class EPointJumpState : uint8
 {
 	None,
@@ -156,6 +157,7 @@ private:
 	EPointJumpResult BufferedPointJumpResult = EPointJumpResult::Normal;
 
 	// ポイントジャンプアニメーションstate
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PointJump|Animation", meta = (AllowPrivateAccess = "true"))
 	EPointJumpState PointJumpState = EPointJumpState::None;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Animation", meta = (AllowPrivateAccess = "true"))
 	float PointJumpStartTime = 0.15f;
