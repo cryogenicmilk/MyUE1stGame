@@ -44,7 +44,8 @@ enum class EPointJumpState : uint8
 	Start,
 	Pulling,
 	Landing,
-	Launch
+	Launch,
+	AfterLaunch
 };
 
 // ========================================
@@ -64,10 +65,13 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	UFUNCTION(BlueprintCallable)
+	void CustomOnPointJumpLaunchAnimationFinished();
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
+	virtual void Landed(const FHitResult& Hit) override;
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void PlayDoubleJumpAnimation();
@@ -155,6 +159,8 @@ private:
 	/** ポイントジャンプ着地までの先行入力 */
 	bool bIsBufferedPointJump = false;
 	EPointJumpResult BufferedPointJumpResult = EPointJumpResult::Normal;
+	// ポイントジャンプの発射は実行されたか
+	bool bHasExecutedPointJumpLaunch = false;
 
 	// ポイントジャンプアニメーションstate
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PointJump|Animation", meta = (AllowPrivateAccess = "true"))
@@ -199,6 +205,7 @@ private:
 	void CustomUpdatePointJumpStart(float DeltaTime);
 	void CustomUpdatePointJumpPulling(float DeltaTime);
 	void CustomUpdatePointJumpLanding(float DeltaTime);
+	void CustomUpdatePointJumpLaunch();
 
 	bool CustomTryFindPointJumpTarget(UPointJumpTargetComponent*& OutTargetComponent) const;
 	bool CustomIsValidPointJumpTarget(const UPointJumpTargetComponent* TargetComponent, const FVector& CameraLocation, const FVector& CameraForward) const;

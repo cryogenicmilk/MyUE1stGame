@@ -86,14 +86,25 @@ void AMyCharacter::CustomUpdatePointJump(float DeltaTime)
 {
 	switch (PointJumpState)
 	{
-	case EPointJumpState::None:return;
-	case EPointJumpState::Start:  CustomUpdatePointJumpStart(DeltaTime);  break;
-	case EPointJumpState::Pulling:CustomUpdatePointJumpPulling(DeltaTime);break;
-	case EPointJumpState::Landing:CustomUpdatePointJumpLanding(DeltaTime);break;
+	case EPointJumpState::None:
+		return;
+
+	case EPointJumpState::Start:CustomUpdatePointJumpStart(DeltaTime);
+		break;
+
+	case EPointJumpState::Pulling:CustomUpdatePointJumpPulling(DeltaTime);
+		break;
+
+	case EPointJumpState::Landing:CustomUpdatePointJumpLanding(DeltaTime);
+		break;
+
 	case EPointJumpState::Launch:
 		CustomFinishPointJump(
 			bIsBufferedPointJump ? BufferedPointJumpResult : EPointJumpResult::Normal
 		); 
+		break;
+
+	case EPointJumpState::AfterLaunch:CustomUpdatePointJumpLaunch();
 		break;
 	}
 }
@@ -139,7 +150,16 @@ void AMyCharacter::CustomUpdatePointJumpLanding(float DeltaTime)
 	if (bIsBufferedPointJump)
 	{
 		PointJumpState = EPointJumpState::Launch;
+		bHasExecutedPointJumpLaunch = false;
 	}
+}
+//launch中
+void AMyCharacter::CustomUpdatePointJumpLaunch()
+{
+	if (bHasExecutedPointJumpLaunch) return;
+	bHasExecutedPointJumpLaunch = true;
+
+	CustomFinishPointJump(bIsBufferedPointJump ? BufferedPointJumpResult : EPointJumpResult::Normal);
 }
 
 // 入力のバインドを行う関数（UEのフレームワークが呼び出す関数）
@@ -255,15 +275,24 @@ void AMyCharacter::CustomMove(const FInputActionValue& Value)
 // ジャンプの処理
 void AMyCharacter::CustomOnJumpActionStarted()
 {
-	if (PointJumpState != EPointJumpState::None)
+	if (PointJumpState == EPointJumpState::Start ||
+		PointJumpState == EPointJumpState::Pulling ||
+		PointJumpState == EPointJumpState::Landing)
 	{
 		if (!bIsPointJumpingEnableJump) return;
 		CustomExecutePointJumpTimingInput();
+		return;
 	}
-	else
+	
+	if (PointJumpState == EPointJumpState::AfterLaunch)
 	{
+		PointJumpState = EPointJumpState::None;
 		CustomExecuteNormalJump();
+		return;
 	}
+
+	CustomExecuteNormalJump();
+	
 }
 
 void AMyCharacter::CustomExecutePointJumpTimingInput()
@@ -320,6 +349,19 @@ void AMyCharacter::CustomStartPointJump()
 	UE_LOG(LogTemp, Warning, TEXT("Target Found"));
 
 	CustomBeginPointJump(TargetComponent);
+}
+
+void AMyCharacter::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+
+	if (PointJumpState == EPointJumpState::AfterLaunch)
+	{
+		PointJumpState = EPointJumpState::None;
+		bIsPointJumpingEnableJump = false;
+		bIsBufferedPointJump = false;
+		BufferedPointJumpResult = EPointJumpResult::Normal;
+	}
 }
 
 
@@ -408,7 +450,7 @@ bool AMyCharacter::CustomIsValidPointJumpTarget(const UPointJumpTargetComponent*
 	UE_LOG(LogTemp, Warning, TEXT("Valid Target: %s"), *OwnerActor->GetName());
 	return true;
 }
-
+//開始
 void AMyCharacter::CustomBeginPointJump(UPointJumpTargetComponent* TargetComponent)
 {
 	if (!TargetComponent) return;
@@ -434,15 +476,14 @@ void AMyCharacter::CustomBeginPointJump(UPointJumpTargetComponent* TargetCompone
 void AMyCharacter::CustomFinishPointJump(EPointJumpResult Result)
 {
 	if (PointJumpState == EPointJumpState::None) return;
-	PointJumpState = EPointJumpState::None;
 
 	CurrentPointJumpTarget = nullptr;
 	CustomSetPointJumpMovementEnabled(true);
 
-	const FVector LanchVelocity = CustomGetPointJumpLaunchDirection() * CustomGetPointJumpForwardPower(Result)
+	const FVector LaunchVelocity = CustomGetPointJumpLaunchDirection() * CustomGetPointJumpForwardPower(Result)
 		+ FVector::UpVector * CustomGetPointJumpUpPower(Result);
 
-	LaunchCharacter(LanchVelocity, true, true);
+	LaunchCharacter(LaunchVelocity, true, true);
 }
 // ポイント判定
 EPointJumpResult AMyCharacter::CustomJudgePointJumpInputTiming() const
@@ -530,5 +571,12 @@ void AMyCharacter::CustomSetPointJumpMovementEnabled(bool bEnabled)
 
 	MovementComp->StopMovementImmediately();
 	MovementComp->SetMovementMode(MOVE_Flying);
+}
+
+void AMyCharacter::CustomOnPointJumpLaunchAnimationFinished()
+{
+	if (PointJumpState != EPointJumpState::Launch) return;
+
+	PointJumpState = EPointJumpState::AfterLaunch;
 }
 
