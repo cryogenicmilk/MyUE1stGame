@@ -128,6 +128,17 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Move", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
 	float PointJumpPullSpeed = 2800.0f;
 
+	//ポイントが近い場合、pullingを飛ばしてlandingになる距離
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Move", meta = (AllowPrivateAccess = "true"))
+	float PointJumpSkipPullingDistance = 200.0f;
+	// pulling中にここまで近づいたらlanding着地吸着へ行く
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Move", meta = (AllowPrivateAccess = "true"))
+	float PointJumpLandingSnapDistance = 200.0f;
+	// landing吸着速度
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Move", meta = (AllowPrivateAccess = "true"))
+	float PointJumpLandingSnapSpeed = 4000.0f;
+
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Timing", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
 	float PointJumpPerfectWindow = 0.12f;
 
@@ -152,7 +163,8 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Launch", meta = (AllowPrivateAccess = "true"))
 	float PointJumpPerfectUpPower = 850.0f;
 
-	/** ポイントジャンプ状態 */
+	// ポイントジャンプ状態
+	// ポイントジャンプ対象位置
 	FVector PointJumpTargetLocation = FVector::ZeroVector;
 	/** ポイントジャンプ状態中普通のジャンプを受け付けない */
 	bool bIsPointJumpingEnableJump = false;
@@ -205,6 +217,7 @@ private:
 	void CustomUpdatePointJumpStart(float DeltaTime);
 	void CustomUpdatePointJumpPulling(float DeltaTime);
 	void CustomUpdatePointJumpLanding(float DeltaTime);
+	void CustomEnterPointJumpLanding();
 	void CustomUpdatePointJumpLaunch();
 
 	bool CustomTryFindPointJumpTarget(UPointJumpTargetComponent*& OutTargetComponent) const;

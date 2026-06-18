@@ -114,10 +114,17 @@ void AMyCharacter::CustomUpdatePointJumpStart(float DeltaTime)
 {
 	PointJumpStateTimer -= DeltaTime;
 
-	if (PointJumpStateTimer <= 0.0f)
+	if (PointJumpStateTimer > 0.0f) return;
+
+	// Landing
+	const float DistanceToTarget = FVector::Dist(GetActorLocation(), PointJumpTargetLocation);
+	if (DistanceToTarget <= PointJumpSkipPullingDistance)
 	{
-		PointJumpState = EPointJumpState::Pulling;
+		CustomEnterPointJumpLanding();
+		return;
 	}
+	// else
+	PointJumpState = EPointJumpState::Pulling;
 }
 void AMyCharacter::CustomUpdatePointJumpPulling(float DeltaTime)
 {
@@ -139,20 +146,49 @@ void AMyCharacter::CustomUpdatePointJumpPulling(float DeltaTime)
 	if (FVector::DistSquared(NextLocation, PointJumpTargetLocation)
 		<= FMath::Square(CustomGetCurrentPointJumpArriveDistance()))
 	{
-		PointJumpState = EPointJumpState::Landing;
-		PointJumpStateTimer = PointJumpLandingTime;
+		CustomEnterPointJumpLanding();
+		return;
 	}
 }
 void AMyCharacter::CustomUpdatePointJumpLanding(float DeltaTime)
 {
+	const FVector CurrentLocation = GetActorLocation();
+
+	const FVector NextLocation = FMath::VInterpConstantTo(
+		CurrentLocation,
+		PointJumpTargetLocation,
+		DeltaTime,
+		PointJumpPullSpeed
+	);
+
+	// Landingは必ず吸着させたいのでSweepしない
+	SetActorLocation(NextLocation, false);
+
 	PointJumpStateTimer -= DeltaTime;
 
-	if (bIsBufferedPointJump)
+	const bool bArrivedLandingPoint =
+		FVector::DistSquared(GetActorLocation(), PointJumpTargetLocation)
+		<= FMath::Square(5.0f);
+
+	if (bArrivedLandingPoint || PointJumpStateTimer <= 0.0f)
 	{
-		PointJumpState = EPointJumpState::Launch;
-		bHasExecutedPointJumpLaunch = false;
+		SetActorLocation(PointJumpTargetLocation, false);
+
+		if (bIsBufferedPointJump)
+		{
+			PointJumpState = EPointJumpState::Launch;
+			bHasExecutedPointJumpLaunch = false;
+		}
 	}
 }
+// landing後launch可能にする
+void AMyCharacter::CustomEnterPointJumpLanding()
+{
+	PointJumpState = EPointJumpState::Landing;
+	PointJumpStateTimer = PointJumpLandingTime;
+	bIsPointJumpingEnableJump = true; // Landingに入ったらタイミング入力を受け付ける
+}
+
 //launch中
 void AMyCharacter::CustomUpdatePointJumpLaunch()
 {
