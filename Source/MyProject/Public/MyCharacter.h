@@ -43,7 +43,8 @@ enum class EPointJumpState : uint8
 	None,
 	Start,
 	Pulling,
-	Landing,
+	LandingSnap,// ポイントに吸着するのみ
+	Landing,	// ポイント上で待機など
 	Launch,
 	AfterLaunch
 };
@@ -65,8 +66,11 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "PointJump|Animation")
 	void CustomOnPointJumpLaunchAnimationFinished();
+
+	UFUNCTION(BlueprintCallable, Category = "PointJump|Animation")
+	void CustomOnPointJumpLandingAnimationFinished();
 
 protected:
 	// Called when the game starts or when spawned
@@ -128,6 +132,12 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Move", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
 	float PointJumpPullSpeed = 2800.0f;
 
+	// start, pulling中に方向入力があったら保存する用
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PointJump|Move", meta = (AllowPrivateAccess = "true"))
+	FVector PointJumpBufferedMoveDirection = FVector::ZeroVector;
+	// 
+	bool bHasPointJumpMoveInput = false;
+
 	//ポイントが近い場合、pullingを飛ばしてlandingになる距離
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Move", meta = (AllowPrivateAccess = "true"))
 	float PointJumpSkipPullingDistance = 200.0f;
@@ -166,7 +176,7 @@ private:
 	// ポイントジャンプ状態
 	// ポイントジャンプ対象位置
 	FVector PointJumpTargetLocation = FVector::ZeroVector;
-	/** ポイントジャンプ状態中普通のジャンプを受け付けない */
+	// ポイントジャンプ可能かどうか
 	bool bIsPointJumpingEnableJump = false;
 	/** ポイントジャンプ着地までの先行入力 */
 	bool bIsBufferedPointJump = false;
@@ -216,10 +226,16 @@ private:
 	void CustomUpdatePointJump(float DeltaTime);
 	void CustomUpdatePointJumpStart(float DeltaTime);
 	void CustomUpdatePointJumpPulling(float DeltaTime);
+
+	void CustomUpdatePointJumpLandingSnap(float DeltaTime);
 	void CustomUpdatePointJumpLanding(float DeltaTime);
-	void CustomEnterPointJumpLanding();
+
+	void CustomEnterPointJumpLandingSnap();
+	void CustomEnterPointJumpReady();
+
 	void CustomUpdatePointJumpLaunch();
 
+	void CustomResetPointJump();
 	bool CustomTryFindPointJumpTarget(UPointJumpTargetComponent*& OutTargetComponent) const;
 	bool CustomIsValidPointJumpTarget(const UPointJumpTargetComponent* TargetComponent, const FVector& CameraLocation, const FVector& CameraForward) const;
 	void CustomBeginPointJump(UPointJumpTargetComponent* TargetComponent);
