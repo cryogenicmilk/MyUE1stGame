@@ -97,6 +97,10 @@ bool UPointJumpActionComponent::CustomIsPointJumpActive() const
 	return PointJumpState != EPointJumpState::None;
 }
 
+bool UPointJumpActionComponent::CustomIsLanding() const
+{
+	return PointJumpState == EPointJumpState::Landing;
+}
 /// =================================================================
 /// ステートマシン更新
 /// =================================================================

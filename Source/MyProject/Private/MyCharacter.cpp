@@ -243,7 +243,14 @@ void AMyCharacter::CustomHandleMoveInput(const FInputActionValue& Value)
 	// ポイントジャンプ中の射出方向候補をコンポーネントへ渡す。
 	if (PointJumpActionComponent)
 	{
+		// 射出方向としてLanding中にも移動入力を受け付けるようにする
 		PointJumpActionComponent->CustomSetPointJumpMoveDirection(WorldMoveDirection);
+
+		// ただし通常移動はさせない
+		if (PointJumpActionComponent->CustomIsLanding())
+		{
+			return;
+		}
 	}
 
 	AddMovementInput(ForwardDirection, MoveInput.Y);

@@ -48,7 +48,7 @@ public:
 	void CustomOnPointJumpLaunchAnimationFinished();
 
 	bool CustomIsPointJumpActive() const;
-
+	bool CustomIsLanding() const;
 protected:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(
@@ -199,6 +199,7 @@ private:
 		meta = (AllowPrivateAccess = "true"))
 	EPointJumpState PointJumpState = EPointJumpState::None;
 
+	// アニメーションか手触りかの調整
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Animation",
 		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
 	float PointJumpStartupDuration = 0.15f;
@@ -209,7 +210,7 @@ private:
 	FVector PointJumpTargetLocation = FVector::ZeroVector;
 	FVector BufferedMoveDirection = FVector::ZeroVector;
 
-	float PointJumpStateTimer = 0.0f;
+	float PointJumpStateTimer = 0.f;
 
 	bool bHasBufferedPointJumpInput = false;
 	EPointJumpResult BufferedPointJumpResult = EPointJumpResult::Normal;
