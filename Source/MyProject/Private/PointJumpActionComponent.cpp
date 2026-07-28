@@ -126,7 +126,7 @@ void UPointJumpActionComponent::CustomUpdatePointJump(float DeltaTime)
 		break;
 
 	case EPointJumpState::Landing:
-		CustomUpdateLanding();
+		CustomUpdateLanding(DeltaTime);
 		break;
 
 	case EPointJumpState::Launch:
@@ -209,10 +209,9 @@ void UPointJumpActionComponent::CustomUpdateLandingSnap(float DeltaTime)
 	CustomEnterLanding();
 }
 
-void UPointJumpActionComponent::CustomUpdateLanding()
+void UPointJumpActionComponent::CustomUpdateLanding(float DeltaTime)
 {
-	if (!bHasBufferedPointJumpInput) return;
-	CustomEnterLaunch();
+	PointJumpLandingElapsedTime += DeltaTime;
 }
 
 void UPointJumpActionComponent::CustomUpdateLaunch()
@@ -288,12 +287,18 @@ void UPointJumpActionComponent::CustomEnterLandingSnap()
 void UPointJumpActionComponent::CustomEnterLanding()
 {
 	PointJumpState = EPointJumpState::Landing;
+	PointJumpLandingElapsedTime = 0.f;
 
 	if (UCharacterMovementComponent* MovementComponent =
 		OwnerCharacter->GetCharacterMovement())
 	{
 		MovementComponent->StopMovementImmediately();
 		MovementComponent->SetMovementMode(MOVE_Walking);
+	}
+
+	if(bHasBufferedPointJumpInput)
+	{
+		CustomEnterLaunch();
 	}
 }
 
@@ -365,13 +370,36 @@ void UPointJumpActionComponent::CustomBufferPointJumpInput()
 		BufferedPointJumpResult == EPointJumpResult::Perfect
 		? TEXT("Perfect")
 		: TEXT("Normal"));
+
+	if(PointJumpState == EPointJumpState::Landing)
+	{
+		CustomEnterLaunch();
+	}
 }
 
 EPointJumpResult UPointJumpActionComponent::CustomJudgePointJumpInputTiming() const
 {
-	return CustomGetPointJumpRemainingTime() <= PointJumpPerfectWindow
-		? EPointJumpResult::Perfect
-		: EPointJumpResult::Normal;
+	switch (PointJumpState)
+	{
+	case EPointJumpState::None:
+	case EPointJumpState::Startup:
+	case EPointJumpState::Pulling:
+	case EPointJumpState::LandingSnap:
+		// 到着前の先行入力
+		return CustomGetPointJumpRemainingTime() <= PointJumpPerfectWindow
+			? EPointJumpResult::Perfect
+			: EPointJumpResult::Normal;
+
+	case EPointJumpState::Landing:
+		// 到着後のperfect判定
+		return PointJumpLandingElapsedTime <= PointJumpPerfectWindow
+			? EPointJumpResult::Perfect
+			: EPointJumpResult::Normal;
+
+	case EPointJumpState::Launch:
+	case EPointJumpState::AfterLaunch:
+	default: return EPointJumpResult::Normal;
+	}
 }
 
 float UPointJumpActionComponent::CustomGetPointJumpRemainingTime() const
@@ -455,13 +483,54 @@ bool UPointJumpActionComponent::CustomIsValidPointJumpTarget(
 		OwnerCharacter->GetActorLocation(),
 		TargetLocation
 	);
+
 	if (Distance > PointJumpSearchRadius) return false;
 
 	const FVector ToTarget = (TargetLocation - CameraLocation).GetSafeNormal();
+	
 	if (ToTarget.IsNearlyZero()) return false;
 
 	const float ViewDot = FVector::DotProduct(CameraForward, ToTarget);
-	return ViewDot >= PointJumpMinViewDot;
+
+	if (ViewDot < PointJumpMinViewDot) return false;
+
+	if (!CustomHasLineOfSightToTarget(TargetComponent,CameraLocation))
+	{
+		return false;
+	}
+	return true;
+}
+
+// レイキャス
+bool UPointJumpActionComponent::CustomHasLineOfSightToTarget(
+	const UPointJumpTargetComponent* TargetComponent,
+	const FVector& CameraLocation
+) const
+{
+	if (!OwnerCharacter || !OwnerCamera || !GetWorld()) return false;
+
+	const AActor* TargetOwnerActor = TargetComponent->GetOwner();
+	if (!TargetOwnerActor) return false;
+
+	const FVector TargetLocation =TargetComponent->CustomGetPointJumpLocation();
+
+	// 自分を除外
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(OwnerCharacter);
+
+	FHitResult HitResult;
+	const bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		CameraLocation,
+		TargetLocation,
+		ECC_Visibility,
+		QueryParams
+	);
+
+	// 何もヒットしなければ、ポイントまでの視線は通っている
+	if (!bHit) return true;
+	// ポイントを所有するアクターにヒットした場合も、ポイントまでの視線は通っている
+	return HitResult.GetActor() == TargetOwnerActor;
 }
 
 /// =================================================================

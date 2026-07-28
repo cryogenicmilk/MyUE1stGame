@@ -72,7 +72,7 @@ private:
 	void CustomUpdateStartup(float DeltaTime);
 	void CustomUpdatePulling(float DeltaTime);
 	void CustomUpdateLandingSnap(float DeltaTime);
-	void CustomUpdateLanding();
+	void CustomUpdateLanding(float DeltaTime);
 	void CustomUpdateLaunch();
 	void CustomUpdateAfterLaunch();
 
@@ -95,6 +95,10 @@ private:
 		const UPointJumpTargetComponent* TargetComponent,
 		const FVector& CameraLocation,
 		const FVector& CameraForward
+	) const;
+	bool CustomHasLineOfSightToTarget(
+		const UPointJumpTargetComponent* TargetComponent,
+		const FVector& CameraLocation
 	) const;
 
 	/// =================================================================
@@ -172,6 +176,13 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Timing",
 		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
 	float PointJumpPerfectWindow = 0.12f;
+	
+	// Landingに入ってからの経過時間
+	float PointJumpLandingElapsedTime = 0.0f;
+	// Landing後もPerfectとして受け付ける時間
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Timing",
+		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float PointJumpAfterLandingPerfectWindow = 0.12f;
 
 	/// =================================================================
 	/// 射出設定
@@ -202,7 +213,7 @@ private:
 	// アニメーションか手触りかの調整
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PointJump|Animation",
 		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
-	float PointJumpStartupDuration = 0.15f;
+	float PointJumpStartupDuration = 0.3f;
 
 	/// =================================================================
 	/// 実行中データ
