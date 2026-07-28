@@ -212,6 +212,11 @@ void UPointJumpActionComponent::CustomUpdateLandingSnap(float DeltaTime)
 void UPointJumpActionComponent::CustomUpdateLanding(float DeltaTime)
 {
 	PointJumpLandingElapsedTime += DeltaTime;
+
+	if (bHasBufferedPointJumpInput)
+	{
+		CustomEnterLaunch();
+	}
 }
 
 void UPointJumpActionComponent::CustomUpdateLaunch()
@@ -295,11 +300,6 @@ void UPointJumpActionComponent::CustomEnterLanding()
 		MovementComponent->StopMovementImmediately();
 		MovementComponent->SetMovementMode(MOVE_Walking);
 	}
-
-	if(bHasBufferedPointJumpInput)
-	{
-		CustomEnterLaunch();
-	}
 }
 
 void UPointJumpActionComponent::CustomEnterLaunch()
@@ -370,11 +370,6 @@ void UPointJumpActionComponent::CustomBufferPointJumpInput()
 		BufferedPointJumpResult == EPointJumpResult::Perfect
 		? TEXT("Perfect")
 		: TEXT("Normal"));
-
-	if(PointJumpState == EPointJumpState::Landing)
-	{
-		CustomEnterLaunch();
-	}
 }
 
 EPointJumpResult UPointJumpActionComponent::CustomJudgePointJumpInputTiming() const
