@@ -28,7 +28,9 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class UEnhancedInputComponent;
+// 作ったやつ
 class UPointJumpTargetComponent;
+class UPointJumpActionComponent;
 
 // ========================================
 // Player Character Class
@@ -42,28 +44,27 @@ class MYPROJECT_API AMyCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	AMyCharacter();
-	virtual void Tick(float DeltaTime) override;
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	
-	virtual void Landed(const FHitResult& Hit) override;
-	 
-	UFUNCTION(BlueprintImplementableEvent)
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Animation")
 	void PlayDoubleJumpAnimation();
 
 private:
 	/// =================================================================
-	/// 初期化
+	/// コンポーネント生成
 	/// =================================================================
-	// 内部処理用の初期化・バインドヘルパー（外部に公開しないためprivateへ）
-	void CustomSetupCharacterRotation();
-	void CustomSetupCamera();
-	void CustomSetupJump();
+	void CustomCreateCameraComponents();
+
+	/// =================================================================
+	/// キャラクター設定
+	/// =================================================================
+	void CustomApplyCharacterRotationSettings();
+	void CustomApplyMovementSettings();
 	void CustomSetupEnhancedInputMapping();
 
 	/// =================================================================
@@ -76,66 +77,81 @@ private:
 	void CustomBindPointJumpInput(UEnhancedInputComponent* EnhancedInputComp);
 
 	/// =================================================================
-	/// 入力実行関数
+	/// 入力処理
 	/// =================================================================
-	void CustomLook(const FInputActionValue& Value);
-	void CustomMove(const FInputActionValue& Value);
-	void CustomStartDash();
-	void CustomStopDash();
-	//ジャンプ入口
-	void CustomTryJump();
+	void CustomHandleLookInput(const FInputActionValue& Value);
+	void CustomHandleMoveInput(const FInputActionValue& Value);
+	void CustomHandleDashStarted();
+	void CustomHandleDashEnded();
+	void CustomHandleJumpInput();
+	void CustomHandlePointJumpInput();
+
+	/// =================================================================
+	/// 通常ジャンプ
+	/// =================================================================
 	void CustomPerformGroundJump();
 	void CustomPerformAirJump();
 
 private: // BP
 	/// =================================================================
+	/// コンポーネント
+	/// =================================================================
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UPointJumpActionComponent* PointJumpActionComponent = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
+	USpringArmComponent* CameraBoom = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
+	UCameraComponent* FollowCamera = nullptr;
+
+	/// =================================================================
 	/// カメラ設定
 	/// =================================================================
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
-	USpringArmComponent* CameraBoom;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Settings",meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float CharacterYawSpeed = 750.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* FollowCamera;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Parameter", meta = (AllowPrivateAccess = "true"))
-	float CustomCharacterYawSpeed = 750.0f; // UE側の命名とかぶらないように先頭にCustomを追加
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Parameter", meta = (AllowPrivateAccess = "true"))
-	float CustomTargetArmLength = 500.0f; // UE側の命名とかぶらないように先頭にCustomを追加
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Settings",meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float CameraArmLength = 500.0f;
 
 	/// =================================================================
-	/// 入力：コンテキストとアクション（カテゴリを階層化）
+	/// Enhanced InputEnhanced Input
 	/// =================================================================
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Context", meta = (AllowPrivateAccess = "true"))
-	UInputMappingContext* DefaultMappingContext;
+	UInputMappingContext* DefaultMappingContext = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
-	UInputAction* LookAction;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
-	UInputAction* MoveAction;
+	UInputAction* LookAction = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
-	UInputAction* DashAction;
+	UInputAction* MoveAction = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
-	UInputAction* JumpAction;
+	UInputAction* DashAction = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
-	UInputAction* PointJumpAction;
+	UInputAction* JumpAction = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Actions", meta = (AllowPrivateAccess = "true"))
+	UInputAction* PointJumpAction = nullptr;
+
 
 	/// =================================================================
-	/// プレイヤーパラーメーター
+	/// 移動設定・プレイヤーパラーメーター
 	/// =================================================================
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Speed",
+		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
 	float WalkSpeed = 500.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Speed",
+		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
 	float DashSpeed = 1000.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = "true"))
-	int CustomJumpMaxCount = 2; // UE側の命名とかぶらないように先頭にCustomを追加
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Jump",
+		meta = (AllowPrivateAccess = "true", ClampMin = "1"))
+	int32 MaxJumpCount = 2;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = "true"))
-	float JumpHeight = 500.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Jump",
+		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float JumpVelocity = 500.0f;
 };

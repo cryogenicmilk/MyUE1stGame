@@ -10,42 +10,32 @@
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
+// 自作
+#include "PointJumpActionComponent.h"
 
 /// =================================================================
-/// コンストラクタ & 初期化関数
+/// コンストラクタ
 /// =================================================================
 // unityの Awake() に相当する関数（コンストラクタ）
 AMyCharacter::AMyCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
+	PointJumpActionComponent = 
+		CreateDefaultSubobject<UPointJumpActionComponent>(TEXT("PointJumpActionComponent"));
+
 	// 初期化
-	CustomSetupCharacterRotation();
-	CustomSetupCamera();
-	CustomSetupJump();
+	CustomCreateCameraComponents();
 }
 
-// キャラ本体の回転設定
-void AMyCharacter::CustomSetupCharacterRotation()
-{
-	// デフォルトだと、キャラクターはコントローラーの回転に合わせて回転する設定になっているため、これらを無効にする
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
-
-	// 移動方向にキャラを向ける
-	GetCharacterMovement()->bOrientRotationToMovement = true; // これを有効にすると、キャラクターは移動方向に向くようになる
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, CustomCharacterYawSpeed, 0.0f); // 回転速度
-
-}
-
-// カメラの初期設定を行う関数（自分で新しく定義）
-void AMyCharacter::CustomSetupCamera()
+/// =================================================================
+/// コンポーネント生成
+/// =================================================================
+void AMyCharacter::CustomCreateCameraComponents()
 {
 	// カメラアームの作成
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); // USpringArmComponentがあるお陰で、カメラが壁に衝突しても、カメラがキャラクターに近づくようになる
 	CameraBoom->SetupAttachment(RootComponent); // キャラクターのルートコンポーネントにアタッチ
-	CameraBoom->TargetArmLength = CustomTargetArmLength; // カメラとキャラクターの距離
 	CameraBoom->bUsePawnControlRotation = true; // コントローラーの回転をカメラアームに適用
 
 	// カメラ作成
@@ -54,79 +44,49 @@ void AMyCharacter::CustomSetupCamera()
 	FollowCamera->bUsePawnControlRotation = false; // カメラはコントローラーの回転をしない
 }
 
-// ジャンプ設定
-void AMyCharacter::CustomSetupJump()
-{
-	GetCharacterMovement()->JumpZVelocity = JumpHeight;
-	JumpMaxCount = CustomJumpMaxCount;
-}
-
 /// =================================================================
-/// ライフサイクル関数
+/// ライフサイクル
 /// =================================================================
-// unityの Start() に相当する関数
 void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CustomSetupEnhancedInputMapping(); // 入力の設定を行うためのおまじない関数
-}
-
-// 使わないなら消す
-//// unityの Update() に相当する関数
-//void AMyCharacter::Tick(float DeltaTime)
-//{
-//	Super::Tick(DeltaTime);
-//}
-
-// 入力のバインドを行う関数（UEのフレームワークが呼び出す関数）
-void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	UEnhancedInputComponent* EnhancedInputComp = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-
-	if (!EnhancedInputComp) return;
-
-	CustomBindLookInput(EnhancedInputComp);
-	CustomBindMoveInput(EnhancedInputComp);
-	CustomBindJumpInput(EnhancedInputComp);
-	CustomBindDashInput(EnhancedInputComp);
-	CustomBindPointJumpInput(EnhancedInputComp);
+	CustomApplyCharacterRotationSettings();
+	CustomApplyMovementSettings();
+	CustomSetupEnhancedInputMapping();
 }
 
 /// =================================================================
-/// 入力バインド（SetupPlayerInputComponent ➔ ヘルパーの順）
+/// キャラクター設定
 /// =================================================================
-void AMyCharacter::CustomBindLookInput(UEnhancedInputComponent* EnhancedInputComp)
+void AMyCharacter::CustomApplyCharacterRotationSettings()
 {
-	if (!LookAction) return;
-	EnhancedInputComp->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::CustomLook);
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (!MovementComponent) return;
+
+	MovementComponent->bOrientRotationToMovement = true;
+	MovementComponent->RotationRate = FRotator(0.0f, CharacterYawSpeed, 0.0f);
 }
 
-void AMyCharacter::CustomBindMoveInput(UEnhancedInputComponent* EnhancedInputComp)
+void AMyCharacter::CustomApplyMovementSettings()
 {
-	if (!MoveAction) return;
-	EnhancedInputComp->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::CustomMove);
-}
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (!MovementComponent) return;
 
-void AMyCharacter::CustomBindDashInput(UEnhancedInputComponent* EnhancedInputComp)
-{
-	if (!DashAction) return;
-	EnhancedInputComp->BindAction(DashAction, ETriggerEvent::Started,   this, &AMyCharacter::CustomStartDash);
-	EnhancedInputComp->BindAction(DashAction, ETriggerEvent::Completed, this, &AMyCharacter::CustomStopDash );
-}
+	MovementComponent->MaxWalkSpeed = WalkSpeed;
+	MovementComponent->JumpZVelocity = JumpVelocity;
+	JumpMaxCount = MaxJumpCount;
 
-void AMyCharacter::CustomBindJumpInput(UEnhancedInputComponent* EnhancedInputComp)
-{
-	if (!JumpAction) return;
-	EnhancedInputComp->BindAction(JumpAction, ETriggerEvent::Started, this, &AMyCharacter::CustomTryJump);
-}
-
-void AMyCharacter::CustomBindPointJumpInput(UEnhancedInputComponent* EnhancedInputComp)
-{
-	if (!JumpAction) return;
-	EnhancedInputComp->BindAction(PointJumpAction,ETriggerEvent::Started, this, &AMyCharacter::CustomTryStartPointJump);
+	// 元々CustomCreateCameraComponents()に書いていたが、
+	// 調整値はBlueprintで変更した値を反映したいので、BeginPlay()で設定するように変更
+	if (CameraBoom)
+	{
+		CameraBoom->TargetArmLength = CameraArmLength;
+	}
 }
 
 // Enhanced Input Mappingの初期設定を行う関数
@@ -152,81 +112,174 @@ void AMyCharacter::CustomSetupEnhancedInputMapping()
 }
 
 /// =================================================================
-/// 入力実行関数
+/// 入力セットアップ
 /// =================================================================
-// カメラ回転入力の処理
-void AMyCharacter::CustomLook(const FInputActionValue& Value)
+void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	//IA_Lookの入力は FVector2D 型なので、Value.Get<FVector2D>() で入力値を取得する
-	const FVector2D LookAxisVector = Value.Get<FVector2D>();
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	if (Controller != nullptr)
+	UEnhancedInputComponent* EnhancedInputComponent =
+		Cast<UEnhancedInputComponent>(PlayerInputComponent);
+
+	if (!EnhancedInputComponent) return;
+
+	CustomBindLookInput(EnhancedInputComponent);
+	CustomBindMoveInput(EnhancedInputComponent);
+	CustomBindDashInput(EnhancedInputComponent);
+	CustomBindJumpInput(EnhancedInputComponent);
+	CustomBindPointJumpInput(EnhancedInputComponent);
+}
+
+/// =================================================================
+/// 入力バインド
+/// =================================================================
+void AMyCharacter::CustomBindLookInput(UEnhancedInputComponent* EnhancedInputComponent)
+{
+	if (!LookAction) return;
+
+	EnhancedInputComponent->BindAction(
+		LookAction,
+		ETriggerEvent::Triggered,
+		this,
+		&AMyCharacter::CustomHandleLookInput
+	);
+}
+
+void AMyCharacter::CustomBindMoveInput(UEnhancedInputComponent* EnhancedInputComponent)
+{
+	if (!MoveAction) return;
+
+	EnhancedInputComponent->BindAction(
+		MoveAction,
+		ETriggerEvent::Triggered,
+		this,
+		&AMyCharacter::CustomHandleMoveInput
+	);
+}
+
+void AMyCharacter::CustomBindDashInput(UEnhancedInputComponent* EnhancedInputComponent)
+{
+	if (!DashAction) return;
+
+	EnhancedInputComponent->BindAction(
+		DashAction,
+		ETriggerEvent::Started,
+		this,
+		&AMyCharacter::CustomHandleDashStarted
+	);
+
+	EnhancedInputComponent->BindAction(
+		DashAction,
+		ETriggerEvent::Completed,
+		this,
+		&AMyCharacter::CustomHandleDashEnded
+	);
+
+	// 入力が別処理によって中断された場合も歩行速度へ戻す。
+	EnhancedInputComponent->BindAction(
+		DashAction,
+		ETriggerEvent::Canceled,
+		this,
+		&AMyCharacter::CustomHandleDashEnded
+	);
+}
+
+void AMyCharacter::CustomBindJumpInput(UEnhancedInputComponent* EnhancedInputComponent)
+{
+	if (!JumpAction) return;
+
+	EnhancedInputComponent->BindAction(
+		JumpAction,
+		ETriggerEvent::Started,
+		this,
+		&AMyCharacter::CustomHandleJumpInput
+	);
+}
+
+void AMyCharacter::CustomBindPointJumpInput(UEnhancedInputComponent* EnhancedInputComponent)
+{
+	if (!PointJumpAction) return;
+
+	EnhancedInputComponent->BindAction(
+		PointJumpAction,
+		ETriggerEvent::Started,
+		this,
+		&AMyCharacter::CustomHandlePointJumpInput
+	);
+}
+
+/// =================================================================
+/// 入力処理
+/// =================================================================
+void AMyCharacter::CustomHandleLookInput(const FInputActionValue& Value)
+{
+	if (!Controller) return;
+
+	const FVector2D LookInput = Value.Get<FVector2D>();
+
+	AddControllerYawInput(LookInput.X);
+	AddControllerPitchInput(-LookInput.Y);
+}
+
+void AMyCharacter::CustomHandleMoveInput(const FInputActionValue& Value)
+{
+	if (!Controller) return;
+
+	const FVector2D MoveInput = Value.Get<FVector2D>();
+
+	const FRotator ControlRotation = Controller->GetControlRotation();
+	const FRotator YawRotation(0.0f, ControlRotation.Yaw, 0.0f);
+
+	const FVector ForwardDirection =
+		FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+
+	const FVector RightDirection =
+		FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+	const FVector WorldMoveDirection =
+		ForwardDirection * MoveInput.Y
+		+ RightDirection * MoveInput.X;
+
+	// ポイントジャンプ中の射出方向候補をコンポーネントへ渡す。
+	if (PointJumpActionComponent)
 	{
-		AddControllerYawInput(LookAxisVector.X); // X = 水平方向の回転
-		AddControllerPitchInput(-LookAxisVector.Y); // Y = 垂直方向の回転（上下反転を防ぐためマイナス）
-		// CameraBoom->bUsePawnControlRotation = true; になっているため、コントローラーの回転がカメラアームに適用され、カメラがキャラクターを追従して回転するようになる
+		PointJumpActionComponent->CustomSetPointJumpMoveDirection(WorldMoveDirection);
 	}
+
+	AddMovementInput(ForwardDirection, MoveInput.Y);
+	AddMovementInput(RightDirection, MoveInput.X);
 }
 
-// 移動入力の処理
-void AMyCharacter::CustomMove(const FInputActionValue& Value)
+void AMyCharacter::CustomHandleDashStarted()
 {
-	//IA_Moveの入力は FVector2D 型なので、Value.Get<FVector2D>() で入力値を取得する
-	const FVector2D MovementVector = Value.Get<FVector2D>();
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (!MovementComponent) return;
 
-	if (Controller != nullptr)
+	MovementComponent->MaxWalkSpeed = DashSpeed;
+}
+
+void AMyCharacter::CustomHandleDashEnded()
+{
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (!MovementComponent) return;
+
+	MovementComponent->MaxWalkSpeed = WalkSpeed;
+}
+
+void AMyCharacter::CustomHandleJumpInput()
+{
+	// ポイントジャンプ中なら
+	//Qでポイントジャンプができるので制限する予定？（QでアクションならQでアクションを終わらせるよな？でもポイント"ジャンプ"だからspaceでやった方がよくね？）
+	if (PointJumpActionComponent)
 	{
-		const FRotator ControlRotation = Controller->GetControlRotation(); // 1. まず「今、カメラ（コントローラー）はどっちを向いてる？」と確認します（ControlRotation）
-		const FRotator YawRotation(0, ControlRotation.Yaw, 0); // 2. 上下を見上げている角度（Pitch）などは邪魔なので、水平方向の向き（Yaw）だけを抜き出します（YawRotation）
-		// 3. その向きを基準にして「前（Forward）」と「右（Right）」のベクトルを計算し、スティックの傾き具合（MovementVector）を掛け合わせてキャラクターを動かしています。
-
-		// キャラクターの前方向と右方向を取得する
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-		//AddMovementInput(ForwardDirection, MovementVector.Y); // Y = 前後移動 
-		//AddMovementInput(RightDirection, MovementVector.X); // X = 左右移動
-
-		//// pointjump
-		//const FVector MoveDirection =
-		//	ForwardDirection * MovementVector.Y
-		//	+ RightDirection * MovementVector.X;
-
-		//if (PointJumpState == EPointJumpState::Start ||
-		//	PointJumpState == EPointJumpState::Pulling ||
-		//	PointJumpState == EPointJumpState::LandingSnap ||
-		//	PointJumpState == EPointJumpState::Landing)
-		//{
-		//	if (!MoveDirection.IsNearlyZero())
-		//	{
-		//		PointJumpBufferedMoveDirection = MoveDirection.GetSafeNormal2D();
-		//		bHasPointJumpMoveInput = true;
-		//	}
-
-		//	return;
-		//}
-
-		AddMovementInput(ForwardDirection, MovementVector.Y);
-		AddMovementInput(RightDirection, MovementVector.X);
+		if(PointJumpActionComponent->CustomIsPointJumpActive())
+		{
+			PointJumpActionComponent->CustomTryStartPointJump();
+			return;
+		}
 	}
-}
 
-// プレイヤーダッシュの処理
-void AMyCharacter::CustomStartDash()
-{
-	bIsDashing = true;
-	GetCharacterMovement()->MaxWalkSpeed = DashSpeed;
-}
-void AMyCharacter::CustomStopDash()
-{
-	bIsDashing = false;
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-}
-
-// ジャンプ処理の入り口
-// 条件チェックでtry,実際はperformで命名
-void AMyCharacter::CustomTryJump()
-{
+	// 通常ジャンプの処理
 	if (JumpCurrentCount >= JumpMaxCount) return;
 
 	if (JumpCurrentCount > 0)
@@ -238,6 +291,16 @@ void AMyCharacter::CustomTryJump()
 	CustomPerformGroundJump();
 }
 
+void AMyCharacter::CustomHandlePointJumpInput()
+{
+	if (!PointJumpActionComponent) return;
+
+	PointJumpActionComponent->CustomTryStartPointJump();
+}
+
+/// =================================================================
+/// 通常ジャンプ
+/// =================================================================
 void AMyCharacter::CustomPerformGroundJump()
 {
 	Jump();
@@ -249,18 +312,8 @@ void AMyCharacter::CustomPerformAirJump()
 	Jump();
 }
 
-// 
-void UpointJumpActionComponent::CustomTryStartPointJump()
-{
-	UPointJumpTargetComponent* TargetComponent = nullptr;
-
-	if (!CustomTryFindPointJumpTarget(TargetComponent))
-	{
-
-	}
-}
-
-void AMyCharacter::Landed(const FHitResult& Hit)
-{
-	Super::Landed(Hit);
-}
+// 今は使ってない。今後エフェクトやアニメーションを入れるときに使うかも
+//void AMyCharacter::Landed(const FHitResult& Hit)
+//{
+//	Super::Landed(Hit);
+//}
